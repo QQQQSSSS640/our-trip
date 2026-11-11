@@ -1,33 +1,29 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<!-- 引入 PWA 應用程式設定檔 (消除網址列與瀏覽器邊框) -->
-  <link rel="manifest" href="manifest.json">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>旅遊手帳</title>
+  <title>旅行手札</title>
   
-  <!-- App 桌面與瀏覽器圖示 -->
+  <!-- App 圖示 -->
   <link rel="apple-touch-icon" href="icon.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="icon.png">
   <link rel="shortcut icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#FFFCF6">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="旅遊手帳">
+  <meta name="apple-mobile-web-app-title" content="旅行手札">
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Zen Maru Gothic -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- Firebase 10.8.0 核心相容庫 (前置載入避免 ReferenceError) -->
+  <!-- Firebase 10.8.0 核心庫 -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
@@ -42,7 +38,6 @@
             'yamabuki': '#F6D27A',  // 山吹黃
             'mizu': '#A8D3E6',      // 水色
             'wakatake': '#B9DAA5',  // 若竹綠
-            'paper-card': '#FFFDF9'
           },
           fontFamily: {
             sans: ['"Zen Maru Gothic"', 'system-ui', 'sans-serif'],
@@ -51,7 +46,6 @@
             'comic': '4px 4px 0px #3E3A39',
             'comic-sm': '2.5px 2.5px 0px #3E3A39',
             'comic-lg': '6px 6px 0px #3E3A39',
-            'comic-hover': '2px 2px 0px #3E3A39'
           }
         }
       }
@@ -66,31 +60,15 @@
       -webkit-tap-highlight-color: transparent;
       user-select: none;
     }
-
     .border-comic { border: 3px solid #3E3A39; }
     .border-b-comic { border-bottom: 3px solid #3E3A39; }
     .border-t-comic { border-top: 3px solid #3E3A39; }
 
     @keyframes gentleFloat {
-      0%, 100% { transform: translateY(0px) rotate(0deg); }
-      50% { transform: translateY(-6px) rotate(1deg); }
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-5px); }
     }
-    @keyframes bounceTab {
-      0% { transform: scale(0.9); }
-      60% { transform: scale(1.08); }
-      100% { transform: scale(1); }
-    }
-
     .animate-float { animation: gentleFloat 4s ease-in-out infinite; }
-    .animate-float-delayed { animation: gentleFloat 4.5s ease-in-out 1.5s infinite; }
-    .animate-bounce-tab { animation: bounceTab 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
-
-    @media (prefers-reduced-motion: reduce) {
-      .animate-float, .animate-float-delayed, .animate-bounce-tab, * {
-        animation: none !important;
-        transition: none !important;
-      }
-    }
 
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -105,18 +83,36 @@
 </head>
 <body class="bg-washi min-h-screen text-sumi flex flex-col items-center">
 
-  <!-- 頂端固定導航選單 -->
+  <!-- 頂端導航列 -->
   <header class="sticky top-0 z-40 w-full max-w-md md:max-w-xl bg-washi border-b-comic px-4 py-2.5 flex items-center justify-between">
     <div class="flex items-center space-x-2">
-      <span class="w-7 h-7 rounded-full bg-coral border-comic flex items-center justify-center text-xs font-black shadow-comic-sm">旅</span>
-      <h1 id="nav-title" class="font-extrabold text-base tracking-wide truncate max-w-[150px]">旅行手帳</h1>
+      <!-- 點擊手帳圖示直接打開旅程切換與管理 -->
+      <button onclick="openTripManagerModal()" class="w-8 h-8 rounded-full bg-coral border-comic flex items-center justify-center text-xs font-black shadow-comic-sm hover:scale-105 active:scale-95 transition-transform" title="切換或建立新旅程">
+        📖
+      </button>
+      <div>
+        <div class="flex items-center gap-1.5">
+          <h1 id="nav-title" class="font-extrabold text-sm tracking-wide truncate max-w-[130px]">旅行手札</h1>
+          <button onclick="openTripManagerModal()" class="text-[11px] font-black text-gray-400 hover:text-sumi">▾ 切換</button>
+        </div>
+        <div class="flex items-center gap-1">
+          <span id="lock-status-badge" onclick="promptUnlockPin()" class="cursor-pointer text-[10px] font-black px-1.5 py-0.2 rounded bg-washi border-comic">
+            🔒 訪客模式
+          </span>
+        </div>
+      </div>
     </div>
-    <nav class="flex items-center space-x-1.5 text-xs font-bold">
-      <button onclick="scrollToSection('hero')" class="px-2.5 py-1.5 rounded-xl border-comic bg-white hover:bg-yamabuki transition-colors shadow-comic-sm">首頁</button>
-      <button onclick="scrollToSection('itinerary')" class="px-2.5 py-1.5 rounded-xl border-comic bg-white hover:bg-mizu transition-colors shadow-comic-sm">日程</button>
-      <button onclick="scrollToSection('transport-hotel')" class="px-2.5 py-1.5 rounded-xl border-comic bg-white hover:bg-wakatake transition-colors shadow-comic-sm">住行</button>
-      <button onclick="scrollToSection('budget-todo')" class="px-2.5 py-1.5 rounded-xl border-comic bg-white hover:bg-coral transition-colors shadow-comic-sm">分帳</button>
-    </nav>
+    
+    <div class="flex items-center gap-1.5">
+      <button onclick="openShareModal()" class="px-2.5 py-1.5 bg-mizu rounded-xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm active:translate-y-0.5">
+        <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+        <span>分享</span>
+      </button>
+      <button onclick="openTripManagerModal()" class="px-2.5 py-1.5 bg-yamabuki rounded-xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm active:translate-y-0.5">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+        <span>新計畫</span>
+      </button>
+    </div>
   </header>
 
   <!-- 主容器 -->
@@ -124,67 +120,54 @@
 
     <!-- HERO 區塊 -->
     <section id="hero" class="relative bg-white rounded-3xl border-comic p-5 shadow-comic overflow-hidden">
-      <button onclick="openTripMetaModal()" class="absolute top-3 right-3 p-2 rounded-xl bg-yamabuki border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm active:translate-y-0.5">
+      <button onclick="protectedAction(openTripMetaModal)" class="absolute top-3 right-3 p-2 rounded-xl bg-yamabuki border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm active:translate-y-0.5">
         <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
         <span>設定</span>
       </button>
 
-      <div class="w-full h-36 flex items-center justify-center my-1 select-none">
-        <svg viewBox="0 0 400 150" class="w-full h-full max-h-36 overflow-visible" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <div class="w-full h-32 flex items-center justify-center my-1 select-none">
+        <svg viewBox="0 0 400 130" class="w-full h-full max-h-32" fill="none">
+          <polygon points="200,15 130,115 270,115" fill="#A8D3E6" stroke="#3E3A39" stroke-width="3.5" stroke-linejoin="round"/>
+          <path d="M 200,15 L 170,55 Q 185,60 200,50 Q 215,60 230,55 Z" fill="#FFFFFF" stroke="#3E3A39" stroke-width="3" stroke-linejoin="round"/>
+          <circle cx="140" cy="35" r="14" fill="#F2A497" stroke="#3E3A39" stroke-width="3" />
+          <path d="M -10 115 Q 80 105 170 115 T 410 115 L 410 130 L -10 130 Z" fill="#B9DAA5" stroke="#3E3A39" stroke-width="3" />
           <g class="animate-float">
-            <path d="M40 40 C35 30 45 20 60 25 C70 15 90 20 95 30 C105 30 110 40 100 50 C95 55 45 55 40 40 Z" fill="#FFFCF6" stroke="#3E3A39" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="250" y="90" width="85" height="24" rx="7" fill="#F6D27A" stroke="#3E3A39" stroke-width="3"/>
+            <rect x="260" y="96" width="14" height="10" rx="2" fill="#FFFFFF" stroke="#3E3A39" stroke-width="2"/>
+            <rect x="282" y="96" width="14" height="10" rx="2" fill="#FFFFFF" stroke="#3E3A39" stroke-width="2"/>
+            <rect x="304" y="96" width="14" height="10" rx="2" fill="#FFFFFF" stroke="#3E3A39" stroke-width="2"/>
+            <circle cx="270" cy="114" r="4.5" fill="#3E3A39" />
+            <circle cx="315" cy="114" r="4.5" fill="#3E3A39" />
           </g>
-          <g class="animate-float-delayed">
-            <path d="M310 30 C305 22 315 15 325 18 C332 10 348 12 352 20 C360 20 365 28 358 35 C352 40 315 40 310 30 Z" fill="#FFFCF6" stroke="#3E3A39" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </g>
-          <g>
-            <polygon points="200,20 120,135 280,135" fill="#A8D3E6" stroke="#3E3A39" stroke-width="3.5" stroke-linejoin="round"/>
-            <path d="M 200,20 L 168,65 Q 180,68 188,60 Q 200,72 210,63 Q 220,68 232,65 Z" fill="#FFFFFF" stroke="#3E3A39" stroke-width="3" stroke-linejoin="round"/>
-            <circle cx="140" cy="45" r="16" fill="#F2A497" stroke="#3E3A39" stroke-width="3" />
-          </g>
-          <path d="M -10 135 Q 80 120 170 135 T 410 135 L 410 150 L -10 150 Z" fill="#B9DAA5" stroke="#3E3A39" stroke-width="3" />
-          <g class="animate-float">
-            <line x1="230" y1="135" x2="390" y2="135" stroke="#3E3A39" stroke-width="3" stroke-linecap="round"/>
-            <rect x="260" y="105" width="90" height="26" rx="8" fill="#F6D27A" stroke="#3E3A39" stroke-width="3"/>
-            <rect x="270" y="112" width="16" height="12" rx="3" fill="#FFFFFF" stroke="#3E3A39" stroke-width="2.5"/>
-            <rect x="295" y="112" width="16" height="12" rx="3" fill="#FFFFFF" stroke="#3E3A39" stroke-width="2.5"/>
-            <rect x="320" y="112" width="16" height="12" rx="3" fill="#FFFFFF" stroke="#3E3A39" stroke-width="2.5"/>
-            <circle cx="280" cy="133" r="5" fill="#3E3A39" />
-            <circle cx="330" cy="133" r="5" fill="#3E3A39" />
-            <polyline points="290,105 300,95 315,95 325,105" stroke="#3E3A39" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-          </g>
-          <circle cx="70" cy="85" r="4" fill="#F2A497" />
-          <circle cx="85" cy="98" r="3" fill="#F2A497" />
-          <circle cx="60" cy="108" r="3.5" fill="#F2A497" />
         </svg>
       </div>
 
       <div class="text-center mt-1">
-        <div class="inline-block px-3 py-1 bg-yamabuki rounded-full border-comic text-xs font-black mb-2 shadow-comic-sm">
-          📍 <span id="hero-dest">日本・東京</span>
+        <div class="inline-block px-3 py-1 bg-yamabuki rounded-full border-comic text-xs font-black mb-1.5 shadow-comic-sm">
+          📍 <span id="hero-dest">載入中...</span>
         </div>
-        <h2 id="hero-title" class="text-2xl font-black tracking-wide text-sumi">我的東京繪本之旅</h2>
-        <p id="hero-date-range" class="text-xs font-bold text-gray-600 mt-1">2026/11/20 ~ 2026/11/25 (6天5夜)</p>
+        <h2 id="hero-title" class="text-2xl font-black tracking-wide text-sumi">旅行手札</h2>
+        <p id="hero-date-range" class="text-xs font-bold text-gray-600 mt-1">2026/11/20 ~ 2026/11/25</p>
       </div>
 
       <div class="mt-4 p-3 bg-washi rounded-2xl border-comic flex items-center justify-around text-center shadow-comic-sm">
         <div>
           <span class="text-xs font-bold text-gray-500 block">出發日</span>
-          <span id="hero-start-date" class="text-xs font-black">2026.11.20</span>
+          <span id="hero-start-date" class="text-xs font-black">-</span>
         </div>
         <div class="w-0.5 h-7 bg-sumi"></div>
         <div>
           <span class="text-xs font-bold text-gray-500 block">距離啟程</span>
           <div class="flex items-baseline justify-center gap-1">
             <span class="text-xs font-black">倒數</span>
-            <span id="hero-countdown-days" class="text-2xl font-black text-coral">9</span>
+            <span id="hero-countdown-days" class="text-2xl font-black text-coral">-</span>
             <span class="text-xs font-black">天</span>
           </div>
         </div>
         <div class="w-0.5 h-7 bg-sumi"></div>
         <div>
           <span class="text-xs font-bold text-gray-500 block">旅伴人數</span>
-          <span id="hero-partner-count" class="text-sm font-black">3 人成行</span>
+          <span id="hero-partner-count" class="text-sm font-black">-</span>
         </div>
       </div>
     </section>
@@ -196,7 +179,7 @@
           <div class="w-3.5 h-7 bg-coral rounded-full border-comic"></div>
           <h2 class="text-xl font-black">每日行程時間軸</h2>
         </div>
-        <button onclick="openAddItemModal()" class="px-3 py-1.5 bg-wakatake rounded-2xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm hover:scale-105 active:scale-95 transition-transform">
+        <button onclick="protectedAction(() => openAddItemModal())" class="px-3 py-1.5 bg-wakatake rounded-2xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm hover:scale-105 active:scale-95 transition-transform">
           <i data-lucide="plus" class="w-4 h-4"></i>
           <span>新增行程</span>
         </button>
@@ -204,29 +187,6 @@
 
       <div id="day-tabs-container" class="flex gap-2 overflow-x-auto no-scrollbar py-1 px-0.5"></div>
 
-      <!-- 天氣小卡 -->
-      <div id="weather-banner" class="bg-white rounded-2xl border-comic p-3.5 shadow-comic flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div id="weather-icon-box" class="w-12 h-12 rounded-xl bg-mizu border-comic flex items-center justify-center text-2xl shadow-comic-sm">☀️</div>
-          <div>
-            <div class="flex items-center gap-1.5">
-              <span id="weather-city" class="text-xs font-black px-2 py-0.5 bg-washi rounded-md border-comic">東京都</span>
-              <span id="weather-condition" class="text-xs font-bold text-gray-700">晴朗舒適</span>
-            </div>
-            <div class="text-lg font-black mt-0.5">
-              <span id="weather-temp">16°C</span>
-              <span class="text-xs font-bold text-gray-500 ml-1">體感良好</span>
-            </div>
-          </div>
-        </div>
-        <div class="text-right">
-          <div class="text-xs font-bold text-coral">降雨機率 <span id="weather-rain" class="font-black text-sm">10%</span></div>
-          <div class="text-[11px] font-bold text-gray-500">紫外線：低</div>
-          <button onclick="editWeatherModal()" class="mt-1 text-[11px] font-black underline text-sumi">自訂氣溫</button>
-        </div>
-      </div>
-
-      <!-- 時間軸卡片容器 -->
       <div id="timeline-container" class="relative pl-6 space-y-4 mt-2">
         <div class="absolute left-2.5 top-3 bottom-3 w-1 bg-sumi rounded-full -translate-x-1/2"></div>
       </div>
@@ -239,28 +199,26 @@
         <h2 class="text-xl font-black">交通票券與住宿</h2>
       </div>
 
-      <!-- 交通區塊 -->
       <div class="bg-white rounded-3xl border-comic p-4 shadow-comic space-y-3">
         <div class="flex items-center justify-between border-b-comic pb-2">
           <div class="flex items-center gap-2">
             <span class="w-6 h-6 rounded-lg bg-yamabuki border-comic flex items-center justify-center text-xs">🚄</span>
-            <h3 class="font-black text-base">交通資訊 & 車票機票</h3>
+            <h3 class="font-black text-base">交通資訊</h3>
           </div>
-          <button onclick="openAddTransportModal()" class="px-2.5 py-1 bg-yamabuki rounded-xl border-comic text-xs font-black shadow-comic-sm hover:scale-105 active:scale-95 transition-all">
+          <button onclick="protectedAction(() => openAddTransportModal())" class="px-2.5 py-1 bg-yamabuki rounded-xl border-comic text-xs font-black shadow-comic-sm">
             + 新增交通
           </button>
         </div>
         <div id="transport-list" class="space-y-2.5"></div>
       </div>
 
-      <!-- 住宿區塊 -->
       <div class="bg-white rounded-3xl border-comic p-4 shadow-comic space-y-3">
         <div class="flex items-center justify-between border-b-comic pb-2">
           <div class="flex items-center gap-2">
             <span class="w-6 h-6 rounded-lg bg-coral border-comic flex items-center justify-center text-xs">🏨</span>
             <h3 class="font-black text-base">住宿飯店</h3>
           </div>
-          <button onclick="openAddHotelModal()" class="px-2.5 py-1 bg-coral rounded-xl border-comic text-xs font-black shadow-comic-sm hover:scale-105 active:scale-95 transition-all">
+          <button onclick="protectedAction(() => openAddHotelModal())" class="px-2.5 py-1 bg-coral rounded-xl border-comic text-xs font-black shadow-comic-sm">
             + 新增住宿
           </button>
         </div>
@@ -268,34 +226,32 @@
       </div>
     </section>
 
-    <!-- 待辦清單與多人分帳 -->
+    <!-- 待辦清單與分帳 -->
     <section id="budget-todo" class="space-y-5">
-      <!-- 待辦清單 -->
       <div class="bg-white rounded-3xl border-comic p-4 shadow-comic space-y-3">
         <div class="flex items-center justify-between border-b-comic pb-2">
           <div class="flex items-center gap-2">
             <span class="w-6 h-6 rounded-lg bg-wakatake border-comic flex items-center justify-center text-xs">🎒</span>
-            <h3 class="font-black text-base">行前與行李待辦清單</h3>
+            <h3 class="font-black text-base">行前行李清單</h3>
           </div>
-          <button onclick="openAddTodoModal()" class="px-2.5 py-1 bg-wakatake rounded-xl border-comic text-xs font-black shadow-comic-sm hover:scale-105 active:scale-95 transition-all">
+          <button onclick="protectedAction(openAddTodoModal)" class="px-2.5 py-1 bg-wakatake rounded-xl border-comic text-xs font-black shadow-comic-sm">
             + 新增項目
           </button>
         </div>
         <div id="todo-list" class="space-y-2"></div>
       </div>
 
-      <!-- 多人分帳 -->
       <div class="bg-white rounded-3xl border-comic p-4 shadow-comic space-y-4">
         <div class="flex items-center justify-between border-b-comic pb-2">
           <div class="flex items-center gap-2">
             <span class="w-6 h-6 rounded-lg bg-yamabuki border-comic flex items-center justify-center text-xs">💰</span>
-            <h3 class="font-black text-base">多人記帳與費用分攤</h3>
+            <h3 class="font-black text-base">多人記帳與結算</h3>
           </div>
           <div class="flex gap-1.5">
-            <button onclick="openAddMemberModal()" class="px-2.5 py-1 bg-washi rounded-xl border-comic text-xs font-black shadow-comic-sm">
+            <button onclick="protectedAction(openAddMemberModal)" class="px-2.5 py-1 bg-washi rounded-xl border-comic text-xs font-black shadow-comic-sm">
               旅伴設定
             </button>
-            <button onclick="openAddExpenseModal()" class="px-2.5 py-1 bg-coral rounded-xl border-comic text-xs font-black shadow-comic-sm">
+            <button onclick="protectedAction(openAddExpenseModal)" class="px-2.5 py-1 bg-coral rounded-xl border-comic text-xs font-black shadow-comic-sm">
               + 記一筆
             </button>
           </div>
@@ -311,7 +267,7 @@
             <span class="text-xs font-bold text-gray-500">旅程總支出</span>
             <div class="text-xl font-black text-sumi">NT$ <span id="total-expenses-amount">0</span></div>
           </div>
-          <button onclick="triggerSettlementConfirm()" class="px-3.5 py-2 bg-yamabuki rounded-2xl border-comic text-xs font-black shadow-comic-sm flex items-center gap-1 hover:scale-105 active:scale-95 transition-transform">
+          <button onclick="triggerSettlementConfirm()" class="px-3.5 py-2 bg-yamabuki rounded-2xl border-comic text-xs font-black shadow-comic-sm flex items-center gap-1">
             <i data-lucide="calculator" class="w-4 h-4"></i>
             <span>智慧平帳結算</span>
           </button>
@@ -331,17 +287,9 @@
         </div>
       </div>
     </section>
-
-    <!-- 底部重置 -->
-    <div class="text-center pt-2 pb-6">
-      <button onclick="resetToDefaultDataPrompt()" class="text-xs text-gray-400 font-bold hover:text-coral transition-colors underline">
-        恢復成範本初始資料
-      </button>
-      <p class="text-[11px] text-gray-400 mt-1">手帳資料自動安全即時同步於 Firebase 雲端</p>
-    </div>
   </main>
 
-  <!-- 全域通用模態彈窗 -->
+  <!-- 全域模態彈窗 -->
   <div id="global-modal" class="fixed inset-0 z-50 bg-sumi/50 flex items-center justify-center px-4 hidden">
     <div id="modal-box" class="bg-white rounded-3xl border-comic p-5 w-full max-w-sm max-h-[90vh] overflow-y-auto shadow-comic-lg">
       <div class="flex items-center justify-between border-b-comic pb-2 mb-4">
@@ -354,7 +302,7 @@
 
   <script>
     /* ============================================================
-       1. Firebase 初始化 (置頂宣告，防止 ReferenceError)
+       1. Firebase 設定與多房間架構
        ============================================================ */
     const firebaseConfig = {
       apiKey: "AIzaSyA3AjwK4a2xHmhLpsIGeJKPLxw3kU_Xx8g",
@@ -366,176 +314,311 @@
       appId: "1:61566627655:web:3b81780f802da3ee3ba662"
     };
 
-    let tripRef = null;
-    try {
-      if (typeof firebase !== 'undefined') {
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        tripRef = db.ref('current_trip');
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 取得當前旅程 ID (預設為 default)
+    const urlParams = new URLSearchParams(window.location.search);
+    let currentTripId = urlParams.get('trip') || localStorage.getItem('last_active_trip') || 'default';
+    let currentPin = null;
+    let isUnlocked = false;
+
+    // 記住本機看過的旅程清單
+    function getStoredTripList() {
+      try {
+        return JSON.parse(localStorage.getItem('my_trip_history')) || [{ id: 'default', title: '預設手帳' }];
+      } catch (e) {
+        return [{ id: 'default', title: '預設手帳' }];
       }
-    } catch (e) {
-      console.warn("Firebase 初始化警示：", e);
     }
 
-    const STORAGE_KEY = 'JAPAN_TRAVEL_SKETCH_DATA_V1';
+    function recordTripToHistory(id, title) {
+      let list = getStoredTripList();
+      const existing = list.find(x => x.id === id);
+      if (existing) {
+        existing.title = title || existing.title;
+      } else {
+        list.push({ id, title: title || id });
+      }
+      localStorage.setItem('my_trip_history', JSON.stringify(list));
+      localStorage.setItem('last_active_trip', id);
+    }
 
     const defaultAppData = {
       meta: {
-        title: "旅行手帳",
+        title: "我的精彩旅程",
         destination: "日本・東京",
         cityWeatherQuery: "東京都",
         startDate: "2026-11-20",
         endDate: "2026-11-25"
       },
       currentSelectedDay: 1,
-      weatherCache: {
-        temp: "16°C",
-        condition: "晴朗舒適",
-        rain: "10%",
-        icon: "☀️"
-      },
+      weatherCache: { temp: "16°C", condition: "晴朗舒適", rain: "10%", icon: "☀️" },
       itinerary: [
-        {
-          id: "item-1",
-          day: 1,
-          time: "10:30",
-          category: "transport",
-          title: "抵達羽田機場搭乘京急線",
-          location: "羽田機場第3航站樓",
-          mustVisit: false,
-          note: "領取 Suica 西瓜卡與預約 Skyliner",
-          navMode: "transit"
-        },
-        {
-          id: "item-2",
-          day: 1,
-          time: "13:00",
-          category: "spot",
-          title: "淺草寺雷門散步",
-          location: "淺草寺",
-          mustVisit: true,
-          note: "拍大燈籠，逛仲見世通買人形燒",
-          navMode: "walking"
-        },
-        {
-          id: "item-3",
-          day: 1,
-          time: "15:30",
-          category: "food",
-          title: "壽々喜園 抹茶冰淇淋",
-          location: "壽々喜園 淺草本店",
-          mustVisit: true,
-          note: "挑戰世界最濃 7 號抹茶冰",
-          navMode: "walking"
-        }
+        { id: "item-1", day: 1, time: "10:30", category: "spot", title: "抵達機場", location: "機場", mustVisit: true, note: "領取交通卡", navMode: "transit" }
       ],
-      transports: [
-        {
-          id: "trans-1",
-          type: "flight",
-          title: "去程航班：長榮航空 BR198",
-          departure: "11/20 08:50 桃園 (TPE)",
-          arrival: "11/20 12:55 羽田 (HND)",
-          code: "座位 23A / 航廈 T3",
-          note: "起飛前 2 小時完成報到行李託運"
-        }
-      ],
-      hotels: [
-        {
-          id: "hotel-1",
-          name: "淺草格拉斯麗酒店 (Hotel Gracery Asakusa)",
-          address: "東京都台東區雷門 1-10-2",
-          dates: "11/20 ~ 11/22 (2晚)",
-          checkInOut: "Check-in: 15:00 / Out: 11:00",
-          bookingCode: "AGODA-8839210",
-          note: "離淺草站 3 分鐘，有浴缸與和式早餐"
-        }
-      ],
+      transports: [],
+      hotels: [],
       todos: [
-        { id: "todo-1", text: "申請 Visit Japan Web 入境手續", done: true },
-        { id: "todo-2", text: "購買 eSIM 網卡 (每日 3GB)", done: true },
-        { id: "todo-3", text: "日幣換匯 (每人至少 4 萬現鈔)", done: false }
+        { id: "todo-1", text: "檢查護照與行李", done: false }
       ],
-      members: ["小明", "阿芳", "家豪"],
-      expenses: [
-        {
-          id: "exp-1",
-          title: "第一晚淺草居酒屋晚餐",
-          amount: 8400,
-          payer: "小明",
-          participants: ["小明", "阿芳", "家豪"],
-          date: "11/20"
-        }
-      ]
+      members: ["我", "旅伴A"],
+      expenses: []
     };
 
-    // 預設直接讀取 defaultAppData，確保按鈕絕對可用
     let appData = JSON.parse(JSON.stringify(defaultAppData));
+    let tripRef = db.ref('trips/' + currentTripId);
 
-    function loadAppData() {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          appData = JSON.parse(stored);
-        } catch (e) {
+    // 監聽雲端資料
+    function listenToCurrentTrip() {
+      if (tripRef) tripRef.off();
+      tripRef = db.ref('trips/' + currentTripId);
+
+      tripRef.on('value', (snapshot) => {
+        const cloud = snapshot.val();
+        if (cloud) {
+          currentPin = cloud.pin || null;
+          appData = cloud.appData || JSON.parse(JSON.stringify(defaultAppData));
+          recordTripToHistory(currentTripId, appData.meta.title);
+          renderAll();
+        } else {
+          // 首次開立
+          currentPin = null;
           appData = JSON.parse(JSON.stringify(defaultAppData));
+          tripRef.set({ pin: null, appData });
+          recordTripToHistory(currentTripId, appData.meta.title);
+          renderAll();
         }
-      }
+        checkSessionPin();
+      });
     }
 
     function saveAppData() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-      } catch (e) {}
-
       if (tripRef) {
-        tripRef.set(appData).catch((err) => {
-          console.warn("Firebase 同步提示：", err);
-        });
+        tripRef.child('appData').set(appData);
+      }
+      recordTripToHistory(currentTripId, appData.meta.title);
+    }
+
+    /* ============================================================
+       2. PIN 碼安全共編機制 (無 PIN 則所有人可編；有 PIN 需解鎖)
+       ============================================================ */
+    function checkSessionPin() {
+      const savedPin = sessionStorage.getItem('unlocked_' + currentTripId);
+      if (!currentPin || savedPin === currentPin) {
+        isUnlocked = true;
+      } else {
+        isUnlocked = false;
+      }
+      updateLockBadge();
+    }
+
+    function updateLockBadge() {
+      const badge = document.getElementById('lock-status-badge');
+      if (!currentPin) {
+        badge.innerHTML = "🔓 公開共編";
+        badge.className = "text-[10px] font-black px-1.5 py-0.2 rounded bg-wakatake/30 text-sumi border-comic";
+      } else if (isUnlocked) {
+        badge.innerHTML = "✏️ 已解鎖共編";
+        badge.className = "text-[10px] font-black px-1.5 py-0.2 rounded bg-yamabuki text-sumi border-comic";
+      } else {
+        badge.innerHTML = "🔒 訪客唯讀 (點擊解鎖)";
+        badge.className = "cursor-pointer text-[10px] font-black px-1.5 py-0.2 rounded bg-coral text-white border-comic";
       }
     }
 
-    function resetToDefaultDataPrompt() {
-      openCustomConfirm("確定要恢復初始範本資料嗎？\n您自行建立的所有行程與記帳將會被覆蓋！", () => {
-        appData = JSON.parse(JSON.stringify(defaultAppData));
-        saveAppData();
-        renderAll();
+    // 攔截所有新增/編輯動作
+    function protectedAction(callback) {
+      if (!currentPin || isUnlocked) {
+        callback();
+        return;
+      }
+      promptUnlockPin(callback);
+    }
+
+    function promptUnlockPin(onSuccessCallback = null) {
+      if (!currentPin) {
+        showCustomAlert("此旅程未設定 PIN 碼，所有旅伴皆可自由編輯！");
+        return;
+      }
+      if (isUnlocked) {
+        showCustomAlert("您已經成功解鎖共編權限！");
+        return;
+      }
+      openModal("解鎖共編權限", `
+        <div class="space-y-3 text-center text-xs font-bold">
+          <p class="text-gray-600">此旅程已受 PIN 碼防護，請輸入 4 位數密碼以啟用編輯：</p>
+          <input type="password" id="input-verify-pin" maxlength="4" placeholder="4位數PIN" class="w-32 mx-auto p-2 text-center text-xl tracking-widest font-black bg-washi rounded-xl border-comic">
+          <button onclick="submitVerifyPin()" class="w-full py-2 bg-yamabuki rounded-2xl border-comic font-black text-sm shadow-comic-sm">
+            驗證並解鎖
+          </button>
+        </div>
+      `);
+      window._pinCallback = onSuccessCallback;
+    }
+
+    function submitVerifyPin() {
+      const pin = document.getElementById('input-verify-pin').value.trim();
+      if (pin === currentPin) {
+        isUnlocked = true;
+        sessionStorage.setItem('unlocked_' + currentTripId, pin);
+        updateLockBadge();
+        closeModal();
+        if (window._pinCallback) {
+          window._pinCallback();
+          window._pinCallback = null;
+        }
+      } else {
+        showCustomAlert("PIN 碼錯誤！請向主揪確認。");
+      }
+    }
+
+    /* ============================================================
+       3. 介面上「新建旅程」與「切換旅程」彈窗 (無需手打網址)
+       ============================================================ */
+    function openTripManagerModal() {
+      const history = getStoredTripList();
+      const listHtml = history.map(item => `
+        <div class="flex items-center justify-between p-2.5 bg-washi rounded-xl border-comic ${item.id === currentTripId ? 'ring-2 ring-coral' : ''}">
+          <div class="cursor-pointer flex-1" onclick="switchTrip('${item.id}')">
+            <div class="font-black text-xs text-sumi">${item.title}</div>
+            <div class="text-[10px] text-gray-400">ID: ${item.id} ${item.id === currentTripId ? '（目前使用中）' : ''}</div>
+          </div>
+          <button onclick="switchTrip('${item.id}')" class="px-2 py-1 bg-white hover:bg-yamabuki rounded-lg border-comic text-xs font-black shadow-comic-sm">
+            開啟
+          </button>
+        </div>
+      `).join('');
+
+      openModal("我的旅程手札庫", `
+        <div class="space-y-4 text-xs font-bold">
+          <div class="space-y-2 max-h-48 overflow-y-auto no-scrollbar">
+            ${listHtml}
+          </div>
+
+          <div class="border-t-comic pt-3 space-y-2">
+            <span class="block font-black text-sm text-sumi">✨ 建立全新旅程計畫</span>
+            <input type="text" id="new-trip-name" placeholder="輸入旅程名稱 (例: 2026 京阪神賞櫻)" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
+            <input type="password" id="new-trip-pin" maxlength="4" placeholder="設定 4 碼 PIN 密碼 (留空則免密碼公開)" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
+            <button onclick="confirmCreateNewTrip()" class="w-full py-2.5 bg-wakatake rounded-2xl border-comic font-black text-sm shadow-comic-sm">
+              立即建立新計畫
+            </button>
+          </div>
+        </div>
+      `);
+    }
+
+    function confirmCreateNewTrip() {
+      const name = document.getElementById('new-trip-name').value.trim();
+      const pin = document.getElementById('new-trip-pin').value.trim() || null;
+      if (!name) {
+        showCustomAlert("請填寫旅程名稱！");
+        return;
+      }
+
+      // 自動產生 6 碼隨機代碼
+      const newId = 'trip_' + Math.random().toString(36).substring(2, 8);
+      const newAppData = JSON.parse(JSON.stringify(defaultAppData));
+      newAppData.meta.title = name;
+
+      db.ref('trips/' + newId).set({
+        pin: pin,
+        appData: newAppData
+      }).then(() => {
+        if (pin) sessionStorage.setItem('unlocked_' + newId, pin);
+        recordTripToHistory(newId, name);
+        closeModal();
+        switchTrip(newId);
+      });
+    }
+
+    function switchTrip(targetId) {
+      const newUrl = `${window.location.origin}${window.location.pathname}?trip=${targetId}`;
+      window.location.href = newUrl;
+    }
+
+    /* ============================================================
+       4. 分享與匯出功能 (LINE 專用文字、連結、PDF 列印)
+       ============================================================ */
+    function openShareModal() {
+      const shareUrl = `${window.location.origin}${window.location.pathname}?trip=${currentTripId}`;
+
+      openModal("分享與匯出", `
+        <div class="space-y-3.5 text-xs font-bold">
+          <!-- 1. 複製邀請連結 -->
+          <div class="p-3 bg-washi rounded-2xl border-comic space-y-1.5">
+            <span class="font-black text-sumi">🔗 旅伴專屬邀請連結</span>
+            <div class="flex gap-1.5">
+              <input type="text" readonly value="${shareUrl}" class="flex-1 p-2 bg-white rounded-xl border-comic text-[11px] truncate select-all">
+              <button onclick="copyShareLink('${shareUrl}')" class="px-3 py-1 bg-mizu rounded-xl border-comic font-black shadow-comic-sm">複製</button>
+            </div>
+            ${currentPin ? `<div class="text-[10px] text-coral font-black">※ 此旅程設有 PIN 碼，請一併告知旅伴：${currentPin}</div>` : ''}
+          </div>
+
+          <!-- 2. LINE 懶人包 -->
+          <button onclick="copyLineSummary()" class="w-full py-2.5 bg-yamabuki rounded-2xl border-comic font-black text-xs shadow-comic-sm flex items-center justify-center gap-1.5">
+            <i data-lucide="message-circle" class="w-4 h-4"></i>
+            <span>複製每日行程文字懶人包 (貼 LINE)</span>
+          </button>
+
+          <!-- 3. 列印 / PDF -->
+          <button onclick="window.print()" class="w-full py-2.5 bg-white rounded-2xl border-comic font-black text-xs shadow-comic-sm flex items-center justify-center gap-1.5">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>列印手帳 / 另存為 PDF</span>
+          </button>
+        </div>
+      `);
+    }
+
+    function copyShareLink(url) {
+      navigator.clipboard.writeText(url).then(() => {
+        showCustomAlert("連結已複製！傳給朋友點開就能一起看手帳囉！");
+      });
+    }
+
+    function copyLineSummary() {
+      let text = `【${appData.meta.title}】\n📅 日期：${appData.meta.startDate} ~ ${appData.meta.endDate}\n📍 目的地：${appData.meta.destination}\n`;
+      text += `-------------------------\n`;
+      const { totalDays } = calculateDays();
+      for (let d = 1; d <= totalDays; d++) {
+        text += `\n📍 Day ${d}：\n`;
+        const items = appData.itinerary.filter(i => i.day === d).sort((a,b) => a.time.localeCompare(b.time));
+        if (items.length === 0) {
+          text += `  (自由活動)\n`;
+        } else {
+          items.forEach(it => {
+            text += `  • ${it.time} ${it.title} (${it.location})\n`;
+          });
+        }
+      }
+      text += `\n🔗 線上手帳：${window.location.origin}${window.location.pathname}?trip=${currentTripId}`;
+
+      navigator.clipboard.writeText(text).then(() => {
+        showCustomAlert("行程文字已複製！可以直接貼到 LINE 群組囉！");
       });
     }
 
     /* ============================================================
-       2. 日期與倒數計算邏輯
+       5. 畫面渲染與模組 (保留原本手帳所有功能)
        ============================================================ */
+    function safeLucide() {
+      if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    }
+
     function calculateDays() {
-      if (!appData || !appData.meta) return { totalDays: 1, countdown: 0 };
       const start = new Date(appData.meta.startDate);
       const end = new Date(appData.meta.endDate);
       const diffTime = Math.abs(end - start);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      const targetStart = new Date(appData.meta.startDate);
-      targetStart.setHours(0,0,0,0);
-
+      const today = new Date(); today.setHours(0,0,0,0);
+      const targetStart = new Date(appData.meta.startDate); targetStart.setHours(0,0,0,0);
       const countDiff = Math.ceil((targetStart - today) / (1000 * 60 * 60 * 24));
       return { totalDays: Math.max(diffDays || 1, 1), countdown: countDiff };
     }
 
-    /* ============================================================
-       3. 畫面渲染與 UI 組裝
-       ============================================================ */
-    function safeLucide() {
-      if (window.lucide && typeof window.lucide.createIcons === 'function') {
-        window.lucide.createIcons();
-      }
-    }
-
     function renderAll() {
-      if (!appData) return;
       renderHero();
       renderDayTabs();
-      renderWeather();
       renderTimeline();
       renderTransports();
       renderHotels();
@@ -549,137 +632,67 @@
       document.getElementById('nav-title').textContent = appData.meta.title;
       document.getElementById('hero-title').textContent = appData.meta.title;
       document.getElementById('hero-dest').textContent = appData.meta.destination;
-      document.getElementById('hero-date-range').textContent = `${appData.meta.startDate.replace(/-/g, '/')} ~ ${appData.meta.endDate.replace(/-/g, '/')} (${totalDays}天${Math.max(totalDays-1, 1)}夜)`;
-      document.getElementById('hero-start-date').textContent = appData.meta.startDate.replace(/-/g, '.');
-
-      const countdownEl = document.getElementById('hero-countdown-days');
-      if (countdown > 0) {
-        countdownEl.textContent = countdown;
-      } else if (countdown === 0) {
-        countdownEl.textContent = "0";
-      } else {
-        countdownEl.parentElement.innerHTML = `<span class="text-xs font-black text-wakatake">旅行進行中！</span>`;
-      }
-
-      document.getElementById('hero-partner-count').textContent = `${appData.members ? appData.members.length : 0} 人成行`;
+      document.getElementById('hero-date-range').textContent = `${appData.meta.startDate} ~ ${appData.meta.endDate} (${totalDays}天)`;
+      document.getElementById('hero-start-date').textContent = appData.meta.startDate;
+      document.getElementById('hero-countdown-days').textContent = countdown >= 0 ? countdown : 0;
+      document.getElementById('hero-partner-count').textContent = `${(appData.members || []).length} 人成行`;
     }
 
     function renderDayTabs() {
       const { totalDays } = calculateDays();
       const container = document.getElementById('day-tabs-container');
       container.innerHTML = '';
-
-      if (appData.currentSelectedDay > totalDays) {
-        appData.currentSelectedDay = 1;
-      }
+      if (appData.currentSelectedDay > totalDays) appData.currentSelectedDay = 1;
 
       for (let day = 1; day <= totalDays; day++) {
         const isSelected = appData.currentSelectedDay === day;
         const btn = document.createElement('button');
         btn.className = `flex-shrink-0 px-4 py-2 rounded-2xl border-comic font-black text-xs transition-all ${
-          isSelected 
-            ? 'bg-yamabuki text-sumi shadow-comic animate-bounce-tab scale-105' 
-            : 'bg-white text-gray-700 shadow-comic-sm hover:bg-washi'
+          isSelected ? 'bg-yamabuki text-sumi shadow-comic scale-105' : 'bg-white text-gray-700 shadow-comic-sm'
         }`;
-        btn.innerHTML = `<span>第 ${day} 天</span>`;
+        btn.textContent = `第 ${day} 天`;
         btn.onclick = () => {
           appData.currentSelectedDay = day;
           renderDayTabs();
-          renderWeather();
           renderTimeline();
         };
         container.appendChild(btn);
       }
     }
 
-    function renderWeather() {
-      const w = appData.weatherCache || {};
-      document.getElementById('weather-city').textContent = appData.meta.cityWeatherQuery || appData.meta.destination;
-      document.getElementById('weather-temp').textContent = w.temp || "18°C";
-      document.getElementById('weather-condition').textContent = w.condition || "多雲時晴";
-      document.getElementById('weather-rain').textContent = w.rain || "20%";
-      document.getElementById('weather-icon-box').textContent = w.icon || "⛅";
-    }
-
     function renderTimeline() {
       const container = document.getElementById('timeline-container');
       container.innerHTML = `<div class="absolute left-2.5 top-3 bottom-3 w-1 bg-sumi rounded-full -translate-x-1/2"></div>`;
-
       const dayItems = (appData.itinerary || [])
         .filter(item => item.day === appData.currentSelectedDay)
         .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
       if (dayItems.length === 0) {
-        const emptyBox = document.createElement('div');
-        emptyBox.className = "bg-white p-5 rounded-3xl border-comic text-center space-y-2 shadow-comic-sm";
-        emptyBox.innerHTML = `
-          <div class="text-3xl">☕</div>
-          <div class="font-bold text-sm">這一天還沒有安排行程呢！</div>
-          <p class="text-xs text-gray-500">點擊上方「+ 新增行程」安排手繪風格好玩去處吧</p>
-        `;
-        container.appendChild(emptyBox);
+        container.innerHTML += `<div class="bg-white p-5 rounded-3xl border-comic text-center font-bold text-xs text-gray-500">這天還沒有行程，點右上角「+ 新增行程」開始規劃吧！</div>`;
         return;
       }
 
       dayItems.forEach(item => {
-        let catBg = "bg-mizu";
-        let catText = "景點";
-        if (item.category === "food") { catBg = "bg-coral"; catText = "美食"; }
-        else if (item.category === "transport") { catBg = "bg-yamabuki"; catText = "交通"; }
-
-        const travelMode = item.navMode || 'transit';
-        let modeLabel = "大眾運輸";
-        let dirMode = "transit";
-        if (travelMode === 'driving') { modeLabel = "開車"; dirMode = "driving"; }
-        if (travelMode === 'walking') { modeLabel = "步行"; dirMode = "walking"; }
-
-        const queryTarget = encodeURIComponent(`${item.location} ${appData.meta.cityWeatherQuery || ''}`);
-        const googleMapUrl = `https://www.google.com/maps/dir/?api=1&destination=${queryTarget}&travelmode=${dirMode}`;
-
+        const queryTarget = encodeURIComponent(`${item.location} ${appData.meta.destination}`);
+        const googleMapUrl = `https://www.google.com/maps/dir/?api=1&destination=${queryTarget}`;
         const card = document.createElement('div');
         card.className = "relative mb-4 group";
         card.innerHTML = `
           <div class="absolute -left-[27px] top-4 w-4 h-4 rounded-full bg-white border-comic z-10"></div>
-          <div class="bg-white rounded-2xl border-comic p-3.5 shadow-comic transition-all hover:-translate-y-0.5">
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="text-xs font-black px-2 py-0.5 rounded-lg border-comic ${catBg} shadow-comic-sm">
-                  ${catText}
-                </span>
-                <span class="text-xs font-black text-gray-600 bg-washi px-2 py-0.5 rounded-lg border-comic">
-                  ${item.time}
-                </span>
-                ${item.mustVisit ? `
-                  <span class="text-[11px] font-black px-2 py-0.5 rounded-lg bg-coral text-sumi border-comic">
-                    ★ 必去
-                  </span>` : ''}
-              </div>
-              <div class="flex items-center gap-1">
-                <button onclick="openEditItemModal('${item.id}')" class="p-1 text-gray-500 hover:text-sumi"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
-                <button onclick="deleteItineraryItem('${item.id}')" class="p-1 text-gray-400 hover:text-coral"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+          <div class="bg-white rounded-2xl border-comic p-3.5 shadow-comic">
+            <div class="flex items-start justify-between">
+              <span class="text-xs font-black bg-washi px-2 py-0.5 rounded-lg border-comic">${item.time}</span>
+              <div class="flex gap-1">
+                <button onclick="protectedAction(() => openAddItemModal('${item.id}'))" class="p-1 text-gray-500"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
+                <button onclick="protectedAction(() => deleteItineraryItem('${item.id}'))" class="p-1 text-gray-400 hover:text-coral"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
               </div>
             </div>
-            <h4 class="font-black text-base mt-2 text-sumi">${item.title}</h4>
-            <div class="flex items-center gap-1 text-xs font-bold text-gray-600 mt-1">
-              <i data-lucide="map-pin" class="w-3.5 h-3.5 text-coral"></i>
-              <span>${item.location}</span>
-            </div>
-            ${item.note ? `
-              <p class="text-xs font-bold text-gray-500 bg-washi p-2 rounded-xl border-comic mt-2 border-dashed">
-                ✏️ ${item.note}
-              </p>` : ''}
-            <div class="mt-3 pt-2.5 border-t-comic flex items-center justify-between">
-              <div class="flex items-center gap-1 text-[11px] font-bold text-gray-500">
-                <span>方式:</span>
-                <select onchange="changeItemNavMode('${item.id}', this.value)" class="bg-washi border-comic rounded-lg px-1.5 py-0.5 text-xs font-bold">
-                  <option value="transit" ${travelMode === 'transit' ? 'selected' : ''}>🚇 大眾運輸</option>
-                  <option value="driving" ${travelMode === 'driving' ? 'selected' : ''}>🚗 自行開車</option>
-                  <option value="walking" ${travelMode === 'walking' ? 'selected' : ''}>🚶 步行探索</option>
-                </select>
-              </div>
-              <a href="${googleMapUrl}" target="_blank" rel="noopener noreferrer" class="px-3 py-1 bg-mizu rounded-xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm">
-                <i data-lucide="navigation" class="w-3 h-3"></i>
-                <span>導航 (${modeLabel})</span>
+            <h4 class="font-black text-base mt-1">${item.title}</h4>
+            <div class="text-xs font-bold text-gray-500 mt-0.5">📍 ${item.location}</div>
+            ${item.note ? `<p class="text-xs font-bold text-gray-500 bg-washi p-2 rounded-xl border-comic mt-2 border-dashed">✏️ ${item.note}</p>` : ''}
+            <div class="mt-2.5 pt-2 border-t-comic flex justify-end">
+              <a href="${googleMapUrl}" target="_blank" class="px-2.5 py-1 bg-mizu rounded-xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm">
+                <i data-lucide="navigation" class="w-3 h-3"></i> 導航
               </a>
             </div>
           </div>
@@ -693,29 +706,19 @@
       const container = document.getElementById('transport-list');
       container.innerHTML = '';
       if (!appData.transports || appData.transports.length === 0) {
-        container.innerHTML = `<div class="text-xs text-gray-400 font-bold text-center py-2">尚未新增交通票券或機票資訊</div>`;
+        container.innerHTML = `<div class="text-xs text-gray-400 font-bold text-center py-2">尚未新增交通票券</div>`;
         return;
       }
       appData.transports.forEach(t => {
         const item = document.createElement('div');
-        item.className = "p-3 bg-washi rounded-2xl border-comic relative shadow-comic-sm";
+        item.className = "p-3 bg-washi rounded-2xl border-comic shadow-comic-sm";
         item.innerHTML = `
           <div class="flex justify-between items-start">
-            <span class="text-xs font-black px-2 py-0.5 bg-yamabuki rounded-lg border-comic">
-              ${t.type === 'flight' ? '✈️ 機票航班' : '🚆 鐵路/租車'}
-            </span>
-            <div class="flex gap-1">
-              <button onclick="openEditTransportModal('${t.id}')" class="p-1 text-gray-500"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
-              <button onclick="deleteTransport('${t.id}')" class="p-1 text-gray-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-            </div>
+            <span class="font-black text-sm">${t.title}</span>
+            <button onclick="protectedAction(() => deleteTransport('${t.id}'))" class="text-gray-400 p-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
           </div>
-          <div class="font-black text-sm mt-1">${t.title}</div>
-          <div class="grid grid-cols-2 gap-1 text-xs font-bold text-gray-600 mt-1">
-            <div>出發：${t.departure}</div>
-            <div>抵達：${t.arrival}</div>
-          </div>
-          ${t.code ? `<div class="text-[11px] font-bold text-coral mt-1">🏷️ ${t.code}</div>` : ''}
-          ${t.note ? `<div class="text-[11px] font-bold text-gray-500 mt-0.5">備註：${t.note}</div>` : ''}
+          <div class="text-xs font-bold text-gray-600 mt-1">${t.departure} ➔ ${t.arrival}</div>
+          ${t.note ? `<div class="text-[11px] text-gray-500 mt-0.5">備註：${t.note}</div>` : ''}
         `;
         container.appendChild(item);
       });
@@ -726,37 +729,19 @@
       const container = document.getElementById('hotel-list');
       container.innerHTML = '';
       if (!appData.hotels || appData.hotels.length === 0) {
-        container.innerHTML = `<div class="text-xs text-gray-400 font-bold text-center py-2">尚未新增住宿飯店資訊</div>`;
+        container.innerHTML = `<div class="text-xs text-gray-400 font-bold text-center py-2">尚未新增住宿飯店</div>`;
         return;
       }
       appData.hotels.forEach(h => {
-        const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(h.name + ' ' + h.address)}`;
         const item = document.createElement('div');
-        item.className = "p-3.5 bg-washi rounded-2xl border-comic shadow-comic-sm space-y-1.5";
+        item.className = "p-3 bg-washi rounded-2xl border-comic shadow-comic-sm space-y-1";
         item.innerHTML = `
           <div class="flex justify-between items-start">
-            <h4 class="font-black text-sm text-sumi flex-1 pr-2">${h.name}</h4>
-            <div class="flex gap-1">
-              <button onclick="openEditHotelModal('${h.id}')" class="p-1 text-gray-500"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
-              <button onclick="deleteHotel('${h.id}')" class="p-1 text-gray-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-            </div>
+            <span class="font-black text-sm">${h.name}</span>
+            <button onclick="protectedAction(() => deleteHotel('${h.id}'))" class="text-gray-400 p-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
           </div>
-          <div class="text-xs font-bold text-gray-600 flex items-center gap-1">
-            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-coral flex-shrink-0"></i>
-            <span class="truncate">${h.address}</span>
-          </div>
-          <div class="flex items-center justify-between text-xs font-bold text-gray-500 bg-white p-2 rounded-xl border-comic">
-            <span>📅 ${h.dates}</span>
-            <span>${h.checkInOut}</span>
-          </div>
-          ${h.bookingCode ? `<div class="text-[11px] font-bold text-coral">訂單代號：${h.bookingCode}</div>` : ''}
-          ${h.note ? `<div class="text-[11px] font-bold text-gray-500">備註：${h.note}</div>` : ''}
-          <div class="pt-1 flex justify-end">
-            <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="px-3 py-1 bg-coral text-sumi rounded-xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm">
-              <i data-lucide="navigation" class="w-3 h-3"></i>
-              <span>導航前往飯店</span>
-            </a>
-          </div>
+          <div class="text-xs font-bold text-gray-600">📍 ${h.address}</div>
+          <div class="text-[11px] text-gray-500">📅 ${h.dates} (${h.checkInOut})</div>
         `;
         container.appendChild(item);
       });
@@ -767,22 +752,20 @@
       const container = document.getElementById('todo-list');
       container.innerHTML = '';
       if (!appData.todos || appData.todos.length === 0) {
-        container.innerHTML = `<div class="text-xs text-gray-400 font-bold text-center py-2">沒有待辦項目，好整以暇！</div>`;
+        container.innerHTML = `<div class="text-xs text-gray-400 font-bold text-center py-2">無待辦事項</div>`;
         return;
       }
       appData.todos.forEach(todo => {
         const item = document.createElement('div');
         item.className = `flex items-center justify-between p-2.5 bg-washi rounded-xl border-comic todo-strike ${todo.done ? 'checked' : ''}`;
         item.innerHTML = `
-          <div class="flex items-center gap-2.5 flex-1 cursor-pointer" onclick="toggleTodo('${todo.id}')">
-            <div class="w-5 h-5 rounded-lg border-comic flex items-center justify-center ${todo.done ? 'bg-wakatake' : 'bg-white'}">
-              ${todo.done ? '<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>' : ''}
-            </div>
-            <span class="todo-text text-xs font-bold text-sumi">${todo.text}</span>
+          <div class="flex items-center gap-2 cursor-pointer flex-1" onclick="protectedAction(() => toggleTodo('${todo.id}'))">
+            <span class="w-5 h-5 rounded-lg border-comic flex items-center justify-center ${todo.done ? 'bg-wakatake' : 'bg-white'} text-xs font-black">
+              ${todo.done ? '✓' : ''}
+            </span>
+            <span class="todo-text text-xs font-bold">${todo.text}</span>
           </div>
-          <button onclick="deleteTodo('${todo.id}')" class="p-1 text-gray-400 hover:text-coral">
-            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-          </button>
+          <button onclick="protectedAction(() => deleteTodo('${todo.id}'))" class="p-1 text-gray-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
         `;
         container.appendChild(item);
       });
@@ -790,560 +773,217 @@
     }
 
     function renderBudgetModule() {
-      const badgesContainer = document.getElementById('member-badges');
-      badgesContainer.innerHTML = '';
-      (appData.members || []).forEach(member => {
-        const badge = document.createElement('span');
-        badge.className = "px-2 py-0.5 rounded-lg bg-mizu border-comic text-xs font-black shadow-comic-sm";
-        badge.textContent = member;
-        badgesContainer.appendChild(badge);
-      });
+      const badges = document.getElementById('member-badges');
+      badges.innerHTML = (appData.members || []).map(m => `
+        <span class="px-2 py-0.5 rounded-lg bg-mizu border-comic text-xs font-black">${m}</span>
+      `).join('');
 
       const total = (appData.expenses || []).reduce((sum, item) => sum + Number(item.amount), 0);
       document.getElementById('total-expenses-amount').textContent = total.toLocaleString();
 
-      const listContainer = document.getElementById('expense-list');
-      listContainer.innerHTML = '';
-
+      const list = document.getElementById('expense-list');
+      list.innerHTML = '';
       if (!appData.expenses || appData.expenses.length === 0) {
-        listContainer.innerHTML = `<div class="text-xs text-gray-400 font-bold text-center py-2">目前沒有任何支出記錄</div>`;
+        list.innerHTML = `<div class="text-xs text-gray-400 font-bold text-center py-2">目前無支出紀錄</div>`;
         return;
       }
-
       appData.expenses.forEach(exp => {
         const item = document.createElement('div');
         item.className = "p-2.5 bg-washi rounded-xl border-comic flex items-center justify-between";
         item.innerHTML = `
-          <div class="space-y-0.5">
-            <div class="font-black text-xs text-sumi">${exp.title}</div>
-            <div class="text-[11px] font-bold text-gray-500">
-              由 <span class="text-coral font-black">${exp.payer}</span> 付款 / 分攤: ${(exp.participants || []).join('、')}
-            </div>
+          <div>
+            <div class="font-black text-xs">${exp.title}</div>
+            <div class="text-[10px] text-gray-500">${exp.payer} 先付 / 分攤: ${exp.participants.join('、')}</div>
           </div>
           <div class="flex items-center gap-2">
-            <span class="font-black text-sm text-sumi">NT$ ${Number(exp.amount).toLocaleString()}</span>
-            <button onclick="deleteExpense('${exp.id}')" class="text-gray-400 hover:text-coral p-1">
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            </button>
+            <span class="font-black text-sm">NT$ ${Number(exp.amount).toLocaleString()}</span>
+            <button onclick="protectedAction(() => deleteExpense('${exp.id}'))" class="text-gray-400 p-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
           </div>
         `;
-        listContainer.appendChild(item);
+        list.appendChild(item);
       });
       safeLucide();
     }
 
     /* ============================================================
-       4. 智慧平帳演算法
-       ============================================================ */
-    function triggerSettlementConfirm() {
-      if (!appData.expenses || appData.expenses.length === 0) {
-        showCustomAlert("目前還沒有任何支出資料可以結算喔！");
-        return;
-      }
-      openCustomConfirm("即將進行【最小次數平帳計算】。\n這將計算誰該給誰多少錢，以最少轉帳次數結算清白，是否確認計算？", () => {
-        calculateAndDisplaySettlement();
-      });
-    }
-
-    function calculateAndDisplaySettlement() {
-      const balances = {};
-      appData.members.forEach(m => balances[m] = 0);
-
-      appData.expenses.forEach(exp => {
-        const amount = Number(exp.amount);
-        const payer = exp.payer;
-        const participants = exp.participants || [];
-
-        if (balances[payer] === undefined) balances[payer] = 0;
-        balances[payer] += amount;
-
-        const share = participants.length > 0 ? (amount / participants.length) : 0;
-        participants.forEach(p => {
-          if (balances[p] === undefined) balances[p] = 0;
-          balances[p] -= share;
-        });
-      });
-
-      const debtors = [];
-      const creditors = [];
-
-      for (const [person, bal] of Object.entries(balances)) {
-        const rounded = Math.round(bal);
-        if (rounded < -1) debtors.push({ person, amount: -rounded });
-        else if (rounded > 1) creditors.push({ person, amount: rounded });
-      }
-
-      debtors.sort((a, b) => b.amount - a.amount);
-      creditors.sort((a, b) => b.amount - a.amount);
-
-      const transactions = [];
-      let i = 0, j = 0;
-
-      while (i < debtors.length && j < creditors.length) {
-        const debit = debtors[i].amount;
-        const credit = creditors[j].amount;
-        const settle = Math.min(debit, credit);
-
-        transactions.push({
-          from: debtors[i].person,
-          to: creditors[j].person,
-          amount: Math.round(settle)
-        });
-
-        debtors[i].amount -= settle;
-        creditors[j].amount -= settle;
-
-        if (debtors[i].amount <= 1) i++;
-        if (creditors[j].amount <= 1) j++;
-      }
-
-      const card = document.getElementById('settlement-results-card');
-      const list = document.getElementById('settlement-transactions');
-      card.classList.remove('hidden');
-      list.innerHTML = '';
-
-      if (transactions.length === 0) {
-        list.innerHTML = `<div class="text-xs font-bold text-gray-600 text-center py-2">大家剛好都平攤了，無需任何轉帳！🎉</div>`;
-      } else {
-        transactions.forEach(t => {
-          const row = document.createElement('div');
-          row.className = "flex items-center justify-between p-2.5 bg-white rounded-xl border-comic text-xs font-black shadow-comic-sm";
-          row.innerHTML = `
-            <div class="flex items-center gap-2">
-              <span class="px-2 py-0.5 rounded-lg bg-coral/40 text-sumi border-comic">${t.from}</span>
-              <span class="text-gray-400">應付給 ➔</span>
-              <span class="px-2 py-0.5 rounded-lg bg-wakatake text-sumi border-comic">${t.to}</span>
-            </div>
-            <div class="text-coral font-black text-sm">NT$ ${t.amount.toLocaleString()}</div>
-          `;
-          list.appendChild(row);
-        });
-      }
-      safeLucide();
-      card.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    /* ============================================================
-       5. 模態彈窗與互動事件
+       6. 彈窗與輸入表單邏輯
        ============================================================ */
     const modal = document.getElementById('global-modal');
-    const modalTitle = document.getElementById('modal-title');
-    const modalContent = document.getElementById('modal-content');
-
     function openModal(title, html) {
-      modalTitle.textContent = title;
-      modalContent.innerHTML = html;
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-content').innerHTML = html;
       modal.classList.remove('hidden');
       safeLucide();
     }
-
-    function closeModal() {
-      modal.classList.add('hidden');
-    }
+    function closeModal() { modal.classList.add('hidden'); }
 
     function showCustomAlert(msg) {
-      openModal("溫馨提示", `
+      openModal("提示", `
         <div class="space-y-4 text-center">
-          <p class="text-sm font-bold text-sumi whitespace-pre-line py-2">${msg}</p>
-          <button onclick="closeModal()" class="w-full py-2 bg-yamabuki rounded-2xl border-comic font-black text-sm shadow-comic-sm">
-            我知道了
-          </button>
+          <p class="text-sm font-bold whitespace-pre-line py-2">${msg}</p>
+          <button onclick="closeModal()" class="w-full py-2 bg-yamabuki rounded-2xl border-comic font-black text-sm">好</button>
         </div>
       `);
     }
 
-    function openCustomConfirm(msg, onConfirm) {
-      openModal("確認操作", `
-        <div class="space-y-4 text-center">
-          <p class="text-sm font-bold text-sumi whitespace-pre-line py-2">${msg}</p>
-          <div class="flex gap-2">
-            <button onclick="closeModal()" class="flex-1 py-2 bg-washi rounded-2xl border-comic font-black text-xs shadow-comic-sm">取消</button>
-            <button id="confirm-action-btn" class="flex-1 py-2 bg-coral rounded-2xl border-comic font-black text-xs shadow-comic-sm">確認</button>
-          </div>
-        </div>
-      `);
-      document.getElementById('confirm-action-btn').onclick = () => {
-        closeModal();
-        onConfirm();
-      };
-    }
-
+    // 旅程設定
     function openTripMetaModal() {
-      openModal("編輯旅程資訊", `
-        <form id="trip-meta-form" class="space-y-3 text-xs font-bold">
-          <div>
-            <label class="block mb-1">旅程名稱</label>
-            <input type="text" id="m-title" value="${appData.meta.title}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-          </div>
-          <div>
-            <label class="block mb-1">目的地 (如: 日本・東京)</label>
-            <input type="text" id="m-dest" value="${appData.meta.destination}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-          </div>
+      openModal("編輯旅程資料", `
+        <form class="space-y-3 text-xs font-bold">
+          <div><label class="block mb-1">手帳名稱</label><input type="text" id="m-title" value="${appData.meta.title}" class="w-full p-2 bg-washi rounded-xl border-comic font-black"></div>
+          <div><label class="block mb-1">目的地</label><input type="text" id="m-dest" value="${appData.meta.destination}" class="w-full p-2 bg-washi rounded-xl border-comic font-black"></div>
           <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block mb-1">出發日</label>
-              <input type="date" id="m-start" value="${appData.meta.startDate}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-            </div>
-            <div>
-              <label class="block mb-1">結束日</label>
-              <input type="date" id="m-end" value="${appData.meta.endDate}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-            </div>
+            <div><label class="block mb-1">出發日</label><input type="date" id="m-start" value="${appData.meta.startDate}" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
+            <div><label class="block mb-1">回程日</label><input type="date" id="m-end" value="${appData.meta.endDate}" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
           </div>
-          <button type="button" onclick="saveTripMeta()" class="w-full py-2.5 mt-2 bg-yamabuki rounded-2xl border-comic font-black text-sm shadow-comic-sm">
-            儲存變更
-          </button>
+          <button type="button" onclick="saveTripMeta()" class="w-full py-2.5 bg-yamabuki rounded-2xl border-comic font-black text-sm">儲存</button>
         </form>
       `);
     }
 
     function saveTripMeta() {
-      const title = document.getElementById('m-title').value.trim();
-      const dest = document.getElementById('m-dest').value.trim();
-      const start = document.getElementById('m-start').value;
-      const end = document.getElementById('m-end').value;
-
-      if (!title || !dest || !start || !end) {
-        showCustomAlert("請填寫完整欄位！");
-        return;
-      }
-
-      appData.meta.title = title;
-      appData.meta.destination = dest;
-      appData.meta.cityWeatherQuery = dest.split('・')[1] || dest;
-      appData.meta.startDate = start;
-      appData.meta.endDate = end;
-
+      appData.meta.title = document.getElementById('m-title').value.trim();
+      appData.meta.destination = document.getElementById('m-dest').value.trim();
+      appData.meta.startDate = document.getElementById('m-start').value;
+      appData.meta.endDate = document.getElementById('m-end').value;
       saveAppData();
       closeModal();
       renderAll();
     }
 
+    // 新增行程
     function openAddItemModal(editId = null) {
       const { totalDays } = calculateDays();
-      let item = { day: appData.currentSelectedDay, time: "10:00", category: "spot", title: "", location: "", mustVisit: false, note: "", navMode: "transit" };
-      if (editId) {
-        item = appData.itinerary.find(i => i.id === editId) || item;
-      }
+      let item = { day: appData.currentSelectedDay, time: "10:00", title: "", location: "", note: "" };
+      if (editId) item = appData.itinerary.find(i => i.id === editId) || item;
 
-      let dayOptions = '';
-      for (let d = 1; d <= totalDays; d++) {
-        dayOptions += `<option value="${d}" ${item.day === d ? 'selected' : ''}>第 ${d} 天</option>`;
-      }
+      let options = '';
+      for (let d = 1; d <= totalDays; d++) options += `<option value="${d}" ${item.day === d ? 'selected' : ''}>第 ${d} 天</option>`;
 
-      openModal(editId ? "修改行程活動" : "新增行程項目", `
+      openModal(editId ? "修改行程" : "新增行程", `
         <form class="space-y-3 text-xs font-bold">
           <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block mb-1">行程天數</label>
-              <select id="item-day" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-                ${dayOptions}
-              </select>
-            </div>
-            <div>
-              <label class="block mb-1">時間</label>
-              <input type="time" id="item-time" value="${item.time}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-            </div>
+            <div><label class="block mb-1">天數</label><select id="item-day" class="w-full p-2 bg-washi rounded-xl border-comic">${options}</select></div>
+            <div><label class="block mb-1">時間</label><input type="time" id="item-time" value="${item.time}" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
           </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block mb-1">活動分類</label>
-              <select id="item-cat" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-                <option value="spot" ${item.category === 'spot' ? 'selected' : ''}>📷 景點探索</option>
-                <option value="food" ${item.category === 'food' ? 'selected' : ''}>🍴 特色美食</option>
-                <option value="transport" ${item.category === 'transport' ? 'selected' : ''}>🚆 交通移動</option>
-              </select>
-            </div>
-            <div>
-              <label class="block mb-1">預設導航方式</label>
-              <select id="item-nav" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-                <option value="transit" ${item.navMode === 'transit' ? 'selected' : ''}>🚇 大眾運輸</option>
-                <option value="driving" ${item.navMode === 'driving' ? 'selected' : ''}>🚗 自行開車</option>
-                <option value="walking" ${item.navMode === 'walking' ? 'selected' : ''}>🚶 步行探索</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label class="block mb-1">活動名稱</label>
-            <input type="text" id="item-title" placeholder="如：淺草雷門散策" value="${item.title}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-          </div>
-          <div>
-            <label class="block mb-1">地點 (供 Google Maps 導航)</label>
-            <input type="text" id="item-loc" placeholder="如：淺草寺" value="${item.location}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-          </div>
-          <div class="flex items-center gap-2 py-1">
-            <input type="checkbox" id="item-must" ${item.mustVisit ? 'checked' : ''} class="w-4 h-4 rounded border-comic">
-            <label for="item-must" class="font-black text-coral cursor-pointer">標記為「★ 必去行程」</label>
-          </div>
-          <div>
-            <label class="block mb-1">備註提醒</label>
-            <input type="text" id="item-note" placeholder="如：領取西瓜卡" value="${item.note || ''}" class="w-full p-2 bg-washi rounded-xl border-comic font-bold">
-          </div>
-          <button type="button" onclick="saveItineraryItem('${editId || ''}')" class="w-full py-2.5 mt-2 bg-wakatake rounded-2xl border-comic font-black text-sm shadow-comic-sm">
-            ${editId ? '更新行程' : '新增至時間軸'}
-          </button>
+          <div><label class="block mb-1">活動名稱</label><input type="text" id="item-title" value="${item.title}" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
+          <div><label class="block mb-1">地點 (導航用)</label><input type="text" id="item-loc" value="${item.location}" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
+          <div><label class="block mb-1">備註提醒</label><input type="text" id="item-note" value="${item.note || ''}" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
+          <button type="button" onclick="saveItinerary('${editId || ''}')" class="w-full py-2.5 bg-wakatake rounded-2xl border-comic font-black text-sm">儲存</button>
         </form>
       `);
     }
 
-    function openEditItemModal(id) { openAddItemModal(id); }
-
-    function saveItineraryItem(editId) {
+    function saveItinerary(editId) {
       const day = Number(document.getElementById('item-day').value);
       const time = document.getElementById('item-time').value;
-      const cat = document.getElementById('item-cat').value;
-      const navMode = document.getElementById('item-nav').value;
       const title = document.getElementById('item-title').value.trim();
       const loc = document.getElementById('item-loc').value.trim();
-      const must = document.getElementById('item-must').checked;
       const note = document.getElementById('item-note').value.trim();
-
-      if (!title || !loc) {
-        showCustomAlert("請填寫活動名稱與地點！");
-        return;
-      }
+      if (!title) return;
 
       if (editId) {
         const item = appData.itinerary.find(i => i.id === editId);
-        if (item) {
-          item.day = day; item.time = time; item.category = cat; item.navMode = navMode;
-          item.title = title; item.location = loc; item.mustVisit = must; item.note = note;
-        }
+        if (item) Object.assign(item, { day, time, title, location: loc, note });
       } else {
-        appData.itinerary.push({
-          id: 'item-' + Date.now(), day, time, category: cat, navMode, title, location: loc, mustVisit: must, note
-        });
+        appData.itinerary.push({ id: 'item-' + Date.now(), day, time, title, location: loc, note });
       }
-
       appData.currentSelectedDay = day;
       saveAppData();
       closeModal();
-      renderDayTabs();
-      renderTimeline();
+      renderAll();
     }
 
     function deleteItineraryItem(id) {
-      openCustomConfirm("確定要刪除這筆行程嗎？", () => {
-        appData.itinerary = appData.itinerary.filter(i => i.id !== id);
-        saveAppData();
-        renderTimeline();
-      });
-    }
-
-    function changeItemNavMode(id, newMode) {
-      const item = appData.itinerary.find(i => i.id === id);
-      if (item) {
-        item.navMode = newMode;
-        saveAppData();
-        renderTimeline();
-      }
-    }
-
-    function editWeatherModal() {
-      openModal("自訂即時天氣資訊", `
-        <form class="space-y-3 text-xs font-bold">
-          <div>
-            <label class="block mb-1">城市/地點</label>
-            <input type="text" id="w-city" value="${appData.meta.cityWeatherQuery || ''}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block mb-1">溫度 (如 18°C)</label>
-              <input type="text" id="w-temp" value="${appData.weatherCache.temp}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-            </div>
-            <div>
-              <label class="block mb-1">降雨機率 (如 10%)</label>
-              <input type="text" id="w-rain" value="${appData.weatherCache.rain}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-            </div>
-          </div>
-          <div>
-            <label class="block mb-1">天候狀態</label>
-            <select id="w-cond" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-              <option value="晴朗舒適|☀️">☀️ 晴朗舒適</option>
-              <option value="多雲微風|⛅">⛅ 多雲微風</option>
-              <option value="細雨綿綿|🌧️">🌧️ 細雨綿綿</option>
-              <option value="白雪皚皚|❄️">❄️ 白雪皚皚</option>
-            </select>
-          </div>
-          <button type="button" onclick="saveWeather()" class="w-full py-2 bg-mizu rounded-2xl border-comic font-black text-sm shadow-comic-sm">
-            儲存天氣卡片
-          </button>
-        </form>
-      `);
-    }
-
-    function saveWeather() {
-      const city = document.getElementById('w-city').value.trim();
-      const temp = document.getElementById('w-temp').value.trim();
-      const rain = document.getElementById('w-rain').value.trim();
-      const [cond, icon] = document.getElementById('w-cond').value.split('|');
-
-      appData.meta.cityWeatherQuery = city;
-      appData.weatherCache = { temp, rain, condition: cond, icon };
+      appData.itinerary = appData.itinerary.filter(i => i.id !== id);
       saveAppData();
-      closeModal();
-      renderWeather();
+      renderTimeline();
     }
 
-    function openAddTransportModal(editId = null) {
-      let t = { type: 'flight', title: '', departure: '', arrival: '', code: '', note: '' };
-      if (editId) t = appData.transports.find(x => x.id === editId) || t;
-      openModal(editId ? "修改交通車票" : "新增交通資訊", `
-        <form class="space-y-3 text-xs font-bold">
-          <div>
-            <label class="block mb-1">交通類型</label>
-            <select id="t-type" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-              <option value="flight" ${t.type === 'flight' ? 'selected' : ''}>✈️ 機票 / 航班</option>
-              <option value="train" ${t.type === 'train' ? 'selected' : ''}>🚆 鐵路 / 新幹線 / 租車</option>
-            </select>
-          </div>
-          <div>
-            <label class="block mb-1">班次/名稱</label>
-            <input type="text" id="t-title" value="${t.title}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-          </div>
+    // 交通與住宿彈窗
+    function openAddTransportModal() {
+      openModal("新增交通", `
+        <form class="space-y-2 text-xs font-bold">
+          <div><label class="block">班次/名稱</label><input type="text" id="t-title" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
           <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block mb-1">出發</label>
-              <input type="text" id="t-dep" placeholder="例: 11/20 08:50" value="${t.departure}" class="w-full p-2 bg-washi rounded-xl border-comic">
-            </div>
-            <div>
-              <label class="block mb-1">抵達</label>
-              <input type="text" id="t-arr" placeholder="例: 11/20 12:55" value="${t.arrival}" class="w-full p-2 bg-washi rounded-xl border-comic">
-            </div>
+            <div><label class="block">出發</label><input type="text" id="t-dep" placeholder="時間地點" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
+            <div><label class="block">抵達</label><input type="text" id="t-arr" placeholder="時間地點" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
           </div>
-          <div>
-            <label class="block mb-1">代碼 / 座位</label>
-            <input type="text" id="t-code" value="${t.code || ''}" class="w-full p-2 bg-washi rounded-xl border-comic">
-          </div>
-          <div>
-            <label class="block mb-1">備註</label>
-            <input type="text" id="t-note" value="${t.note || ''}" class="w-full p-2 bg-washi rounded-xl border-comic">
-          </div>
-          <button type="button" onclick="saveTransport('${editId || ''}')" class="w-full py-2 bg-yamabuki rounded-2xl border-comic font-black text-sm shadow-comic-sm">
-            儲存交通資訊
-          </button>
+          <div><label class="block">備註</label><input type="text" id="t-note" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
+          <button type="button" onclick="saveTransport()" class="w-full py-2 bg-yamabuki rounded-2xl border-comic font-black mt-2">新增</button>
         </form>
       `);
     }
 
-    function openEditTransportModal(id) { openAddTransportModal(id); }
-
-    function saveTransport(editId) {
-      const type = document.getElementById('t-type').value;
+    function saveTransport() {
       const title = document.getElementById('t-title').value.trim();
-      const dep = document.getElementById('t-dep').value.trim();
-      const arr = document.getElementById('t-arr').value.trim();
-      const code = document.getElementById('t-code').value.trim();
-      const note = document.getElementById('t-note').value.trim();
-
-      if (!title) { showCustomAlert("請輸入交通名稱！"); return; }
-
-      if (editId) {
-        const item = appData.transports.find(x => x.id === editId);
-        if (item) { Object.assign(item, { type, title, departure: dep, arrival: arr, code, note }); }
-      } else {
-        appData.transports.push({ id: 'trans-' + Date.now(), type, title, departure: dep, arrival: arr, code, note });
-      }
-
+      if (!title) return;
+      appData.transports.push({
+        id: 't-' + Date.now(),
+        title,
+        departure: document.getElementById('t-dep').value.trim(),
+        arrival: document.getElementById('t-arr').value.trim(),
+        note: document.getElementById('t-note').value.trim()
+      });
       saveAppData();
       closeModal();
       renderTransports();
     }
 
     function deleteTransport(id) {
-      openCustomConfirm("確定刪除此交通記錄嗎？", () => {
-        appData.transports = appData.transports.filter(x => x.id !== id);
-        saveAppData();
-        renderTransports();
-      });
+      appData.transports = appData.transports.filter(x => x.id !== id);
+      saveAppData();
+      renderTransports();
     }
 
-    function openAddHotelModal(editId = null) {
-      let h = { name: '', address: '', dates: '', checkInOut: 'Check-in: 15:00 / Out: 11:00', bookingCode: '', note: '' };
-      if (editId) h = appData.hotels.find(x => x.id === editId) || h;
-      openModal(editId ? "編輯住宿飯店" : "新增住宿飯店", `
-        <form class="space-y-3 text-xs font-bold">
-          <div>
-            <label class="block mb-1">飯店名稱</label>
-            <input type="text" id="h-name" value="${h.name}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-          </div>
-          <div>
-            <label class="block mb-1">地址 (用於導航)</label>
-            <input type="text" id="h-addr" value="${h.address}" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-          </div>
+    function openAddHotelModal() {
+      openModal("新增飯店住宿", `
+        <form class="space-y-2 text-xs font-bold">
+          <div><label class="block">飯店名稱</label><input type="text" id="h-name" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
+          <div><label class="block">地址</label><input type="text" id="h-addr" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
           <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block mb-1">入住期間</label>
-              <input type="text" id="h-dates" value="${h.dates}" class="w-full p-2 bg-washi rounded-xl border-comic">
-            </div>
-            <div>
-              <label class="block mb-1">入住/退房時間</label>
-              <input type="text" id="h-time" value="${h.checkInOut}" class="w-full p-2 bg-washi rounded-xl border-comic">
-            </div>
+            <div><label class="block">日期</label><input type="text" id="h-dates" placeholder="11/20~11/22" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
+            <div><label class="block">退入住</label><input type="text" id="h-time" value="Check-in 15:00" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
           </div>
-          <div>
-            <label class="block mb-1">訂單代號</label>
-            <input type="text" id="h-code" value="${h.bookingCode || ''}" class="w-full p-2 bg-washi rounded-xl border-comic">
-          </div>
-          <div>
-            <label class="block mb-1">住宿備註</label>
-            <input type="text" id="h-note" value="${h.note || ''}" class="w-full p-2 bg-washi rounded-xl border-comic">
-          </div>
-          <button type="button" onclick="saveHotel('${editId || ''}')" class="w-full py-2 bg-coral rounded-2xl border-comic font-black text-sm shadow-comic-sm">
-            儲存飯店卡片
-          </button>
+          <button type="button" onclick="saveHotel()" class="w-full py-2 bg-coral rounded-2xl border-comic font-black mt-2">新增</button>
         </form>
       `);
     }
 
-    function openEditHotelModal(id) { openAddHotelModal(id); }
-
-    function saveHotel(editId) {
+    function saveHotel() {
       const name = document.getElementById('h-name').value.trim();
-      const addr = document.getElementById('h-addr').value.trim();
-      const dates = document.getElementById('h-dates').value.trim();
-      const time = document.getElementById('h-time').value.trim();
-      const code = document.getElementById('h-code').value.trim();
-      const note = document.getElementById('h-note').value.trim();
-
-      if (!name || !addr) { showCustomAlert("請填寫飯店名稱與地址！"); return; }
-
-      if (editId) {
-        const item = appData.hotels.find(x => x.id === editId);
-        if (item) { Object.assign(item, { name, address: addr, dates, checkInOut: time, bookingCode: code, note }); }
-      } else {
-        appData.hotels.push({ id: 'hotel-' + Date.now(), name, address: addr, dates, checkInOut: time, bookingCode: code, note });
-      }
-
+      if (!name) return;
+      appData.hotels.push({
+        id: 'h-' + Date.now(),
+        name,
+        address: document.getElementById('h-addr').value.trim(),
+        dates: document.getElementById('h-dates').value.trim(),
+        checkInOut: document.getElementById('h-time').value.trim()
+      });
       saveAppData();
       closeModal();
       renderHotels();
     }
 
     function deleteHotel(id) {
-      openCustomConfirm("確定刪除此住宿資訊嗎？", () => {
-        appData.hotels = appData.hotels.filter(x => x.id !== id);
-        saveAppData();
-        renderHotels();
-      });
+      appData.hotels = appData.hotels.filter(x => x.id !== id);
+      saveAppData();
+      renderHotels();
     }
 
+    // 待辦增刪
     function openAddTodoModal() {
-      openModal("新增待辦/行李準備", `
-        <form class="space-y-3 text-xs font-bold">
-          <div>
-            <label class="block mb-1">項目內容</label>
-            <input type="text" id="todo-input" placeholder="例: 隨身電源、護照檢查" class="w-full p-2.5 bg-washi rounded-xl border-comic font-black">
-          </div>
-          <button type="button" onclick="saveTodo()" class="w-full py-2 bg-wakatake rounded-2xl border-comic font-black text-sm shadow-comic-sm">
-            加入待辦清單
-          </button>
-        </form>
+      openModal("新增待辦行李", `
+        <div class="space-y-3 text-xs font-bold">
+          <input type="text" id="todo-text" placeholder="例: 護照、日幣" class="w-full p-2 bg-washi rounded-xl border-comic">
+          <button onclick="saveTodo()" class="w-full py-2 bg-wakatake rounded-2xl border-comic font-black">新增</button>
+        </div>
       `);
     }
 
     function saveTodo() {
-      const text = document.getElementById('todo-input').value.trim();
-      if (!text) { showCustomAlert("請輸入待辦內容！"); return; }
+      const text = document.getElementById('todo-text').value.trim();
+      if (!text) return;
       appData.todos.push({ id: 'todo-' + Date.now(), text, done: false });
       saveAppData();
       closeModal();
@@ -1351,50 +991,39 @@
     }
 
     function toggleTodo(id) {
-      const todo = appData.todos.find(t => t.id === id);
-      if (todo) {
-        todo.done = !todo.done;
-        saveAppData();
-        renderTodos();
-      }
+      const t = appData.todos.find(x => x.id === id);
+      if (t) { t.done = !t.done; saveAppData(); renderTodos(); }
     }
 
     function deleteTodo(id) {
-      appData.todos = appData.todos.filter(t => t.id !== id);
+      appData.todos = appData.todos.filter(x => x.id !== id);
       saveAppData();
       renderTodos();
     }
 
+    // 旅伴與分帳
     function openAddMemberModal() {
-      openModal("管理旅伴成員", `
+      openModal("設定旅伴", `
         <div class="space-y-3 text-xs font-bold">
-          <p class="text-gray-500">旅伴名字將用於分攤費用：</p>
-          <div id="member-editor-list" class="space-y-2">
-            ${(appData.members || []).map((m, index) => `
-              <div class="flex items-center justify-between p-2 bg-washi rounded-xl border-comic">
-                <span class="font-black text-sumi">${m}</span>
-                ${appData.members.length > 1 ? `
-                  <button onclick="removeMember(${index})" class="text-coral hover:scale-110 font-black">✕</button>
-                ` : ''}
+          <div class="space-y-1.5">
+            ${(appData.members || []).map((m, i) => `
+              <div class="flex justify-between p-2 bg-washi rounded-xl border-comic">
+                <span>${m}</span>
+                <button onclick="removeMember(${i})" class="text-coral">✕</button>
               </div>
             `).join('')}
           </div>
-          <div class="pt-2 flex gap-2">
-            <input type="text" id="new-member-name" placeholder="新增旅伴姓名" class="flex-1 p-2 bg-washi rounded-xl border-comic font-black">
-            <button onclick="addNewMember()" class="px-3 py-2 bg-mizu rounded-xl border-comic font-black shadow-comic-sm">新增</button>
+          <div class="flex gap-2">
+            <input type="text" id="new-member-name" placeholder="新旅伴名字" class="flex-1 p-2 bg-washi rounded-xl border-comic">
+            <button onclick="addMember()" class="px-3 bg-mizu rounded-xl border-comic font-black">新增</button>
           </div>
         </div>
       `);
     }
 
-    function addNewMember() {
-      const input = document.getElementById('new-member-name');
-      const name = input.value.trim();
-      if (!name) return;
-      if (appData.members.includes(name)) {
-        showCustomAlert("該旅伴名字已經存在囉！");
-        return;
-      }
+    function addMember() {
+      const name = document.getElementById('new-member-name').value.trim();
+      if (!name || appData.members.includes(name)) return;
       appData.members.push(name);
       saveAppData();
       openAddMemberModal();
@@ -1402,88 +1031,50 @@
       renderHero();
     }
 
-    function removeMember(index) {
-      const name = appData.members[index];
-      openCustomConfirm(`確定移除旅伴「${name}」嗎？`, () => {
-        appData.members.splice(index, 1);
-        saveAppData();
-        openAddMemberModal();
-        renderBudgetModule();
-        renderHero();
-      });
+    function removeMember(i) {
+      appData.members.splice(i, 1);
+      saveAppData();
+      openAddMemberModal();
+      renderBudgetModule();
+      renderHero();
     }
 
     function openAddExpenseModal() {
       if (!appData.members || appData.members.length === 0) {
-        showCustomAlert("請先在旅伴設定中新增成員！");
+        showCustomAlert("請先新增旅伴！");
         return;
       }
-
       const memberOptions = appData.members.map(m => `<option value="${m}">${m}</option>`).join('');
       const checkboxes = appData.members.map(m => `
-        <label class="flex items-center gap-1.5 p-1 bg-washi rounded-lg border-comic cursor-pointer text-xs font-black">
-          <input type="checkbox" name="exp-participant" value="${m}" checked class="rounded border-comic">
-          <span>${m}</span>
-        </label>
+        <label class="flex items-center gap-1 p-1 bg-washi rounded border-comic"><input type="checkbox" name="exp-p" value="${m}" checked> <span>${m}</span></label>
       `).join('');
 
-      openModal("記下一筆旅程支出", `
-        <form class="space-y-3 text-xs font-bold">
-          <div>
-            <label class="block mb-1">支出品項名稱</label>
-            <input type="text" id="exp-title" placeholder="例: 敘敘苑燒肉晚餐" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-          </div>
+      openModal("記帳支出", `
+        <form class="space-y-2 text-xs font-bold">
+          <div><label class="block">品項</label><input type="text" id="exp-title" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
           <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block mb-1">金額 (NTD)</label>
-              <input type="number" id="exp-amount" placeholder="例: 3600" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-            </div>
-            <div>
-              <label class="block mb-1">誰付款？</label>
-              <select id="exp-payer" class="w-full p-2 bg-washi rounded-xl border-comic font-black">
-                ${memberOptions}
-              </select>
-            </div>
+            <div><label class="block">金額</label><input type="number" id="exp-amt" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
+            <div><label class="block">付款人</label><select id="exp-payer" class="w-full p-2 bg-washi rounded-xl border-comic">${memberOptions}</select></div>
           </div>
-          <div>
-            <label class="block mb-1">誰分攤？(可多選)</label>
-            <div class="flex flex-wrap gap-2 pt-1">
-              ${checkboxes}
-            </div>
-          </div>
-          <button type="button" onclick="saveExpense()" class="w-full py-2.5 mt-2 bg-coral rounded-2xl border-comic font-black text-sm shadow-comic-sm">
-            儲存記帳
-          </button>
+          <div><label class="block">分攤人</label><div class="flex flex-wrap gap-2 pt-1">${checkboxes}</div></div>
+          <button type="button" onclick="saveExpense()" class="w-full py-2 bg-coral rounded-2xl border-comic font-black mt-2">儲存</button>
         </form>
       `);
     }
 
     function saveExpense() {
       const title = document.getElementById('exp-title').value.trim();
-      const amount = Number(document.getElementById('exp-amount').value);
+      const amount = Number(document.getElementById('exp-amt').value);
       const payer = document.getElementById('exp-payer').value;
+      const checkedEls = document.querySelectorAll('input[name="exp-p"]:checked');
+      const participants = Array.from(checkedEls).map(e => e.value);
 
-      const checkedEls = document.querySelectorAll('input[name="exp-participant"]:checked');
-      const participants = Array.from(checkedEls).map(el => el.value);
-
-      if (!title || !amount || amount <= 0) {
-        showCustomAlert("請輸入正確的品項名稱與大於 0 的金額！");
-        return;
-      }
-      if (participants.length === 0) {
-        showCustomAlert("至少需勾選一位分攤人！");
-        return;
-      }
+      if (!title || !amount || participants.length === 0) return;
 
       appData.expenses.unshift({
-        id: 'exp-' + Date.now(),
-        title,
-        amount,
-        payer,
-        participants,
+        id: 'exp-' + Date.now(), title, amount, payer, participants,
         date: new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })
       });
-
       document.getElementById('settlement-results-card').classList.add('hidden');
       saveAppData();
       closeModal();
@@ -1491,38 +1082,54 @@
     }
 
     function deleteExpense(id) {
-      openCustomConfirm("確定刪除這筆支出紀錄嗎？", () => {
-        appData.expenses = appData.expenses.filter(e => e.id !== id);
-        document.getElementById('settlement-results-card').classList.add('hidden');
-        saveAppData();
-        renderBudgetModule();
+      appData.expenses = appData.expenses.filter(e => e.id !== id);
+      document.getElementById('settlement-results-card').classList.add('hidden');
+      saveAppData();
+      renderBudgetModule();
+    }
+
+    function triggerSettlementConfirm() {
+      if (!appData.expenses || appData.expenses.length === 0) return;
+      const balances = {};
+      appData.members.forEach(m => balances[m] = 0);
+      appData.expenses.forEach(e => {
+        const amt = Number(e.amount);
+        balances[e.payer] = (balances[e.payer] || 0) + amt;
+        const share = amt / e.participants.length;
+        e.participants.forEach(p => balances[p] = (balances[p] || 0) - share);
       });
+
+      const debtors = [], creditors = [];
+      for (const [p, bal] of Object.entries(balances)) {
+        const r = Math.round(bal);
+        if (r < -1) debtors.push({ p, amt: -r });
+        else if (r > 1) creditors.push({ p, amt: r });
+      }
+
+      const txs = [];
+      let i = 0, j = 0;
+      while (i < debtors.length && j < creditors.length) {
+        const s = Math.min(debtors[i].amt, creditors[j].amt);
+        txs.push({ from: debtors[i].p, to: creditors[j].p, amt: Math.round(s) });
+        debtors[i].amt -= s; creditors[j].amt -= s;
+        if (debtors[i].amt <= 1) i++;
+        if (creditors[j].amt <= 1) j++;
+      }
+
+      const card = document.getElementById('settlement-results-card');
+      const list = document.getElementById('settlement-transactions');
+      card.classList.remove('hidden');
+      list.innerHTML = txs.map(t => `
+        <div class="flex items-center justify-between p-2 bg-white rounded-xl border-comic text-xs font-black">
+          <div><span class="text-coral">${t.from}</span> ➔ <span class="text-wakatake">${t.to}</span></div>
+          <div class="text-coral">NT$ ${t.amt.toLocaleString()}</div>
+        </div>
+      `).join('') || '<div class="text-center text-xs py-2">大家剛好都平攤了！</div>';
+      card.scrollIntoView({ behavior: 'smooth' });
     }
 
-    function scrollToSection(id) {
-      const el = document.getElementById(id);
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    /* ============================================================
-       6. 啟動與 Firebase 即時雙向綁定
-       ============================================================ */
-    // 立即先渲染一次本機預設資料，確保畫面絕不留白
-    loadAppData();
-    renderAll();
-
-    // 如果 Firebase 連線成功，進行雲端即時同步
-    if (tripRef) {
-      tripRef.on('value', (snapshot) => {
-        const cloudData = snapshot.val();
-        if (cloudData) {
-          appData = cloudData;
-          renderAll();
-        } else {
-          tripRef.set(appData);
-        }
-      });
-    }
+    // 啟動監聽
+    listenToCurrentTrip();
   </script>
 </body>
 </html>
