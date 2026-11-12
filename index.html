@@ -940,19 +940,29 @@ function deleteTripFromHistory(targetId, targetTitle) {
       `);
     }
 
-    function saveItinerary(editId) {
+function saveItinerary(editId) {
+      if (!currentTripId) {
+        showCustomAlert("請先建立或開啟一個旅程計畫，才能儲存資料喔！");
+        return;
+      }
       const day = Number(document.getElementById('item-day').value);
-      const time = document.getElementById('item-time').value;
+      const time = document.getElementById('item-time').value || "10:00";
       const title = document.getElementById('item-title').value.trim();
       const loc = document.getElementById('item-loc').value.trim();
       const note = document.getElementById('item-note').value.trim();
-      if (!title) return;
+
+      if (!title) {
+        showCustomAlert("請填寫活動名稱！");
+        return;
+      }
+
+      if (!Array.isArray(appData.itinerary)) appData.itinerary = [];
 
       if (editId) {
         const item = appData.itinerary.find(i => i.id === editId);
-        if (item) Object.assign(item, { day, time, title, location: loc, note });
+        if (item) Object.assign(item, { day, time, title, location: loc || title, note });
       } else {
-        appData.itinerary.push({ id: 'item-' + Date.now(), day, time, title, location: loc, note });
+        appData.itinerary.push({ id: 'item-' + Date.now(), day, time, title, location: loc || title, note });
       }
       appData.currentSelectedDay = day;
       saveAppData();
@@ -961,6 +971,7 @@ function deleteTripFromHistory(targetId, targetTitle) {
     }
 
     function deleteItineraryItem(id) {
+      if (!Array.isArray(appData.itinerary)) return;
       appData.itinerary = appData.itinerary.filter(i => i.id !== id);
       saveAppData();
       renderTimeline();
@@ -969,21 +980,30 @@ function deleteTripFromHistory(targetId, targetTitle) {
     // 交通與住宿彈窗
     function openAddTransportModal() {
       openModal("新增交通", `
-        <form class="space-y-2 text-xs font-bold">
-          <div><label class="block">班次/名稱</label><input type="text" id="t-title" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
+        <form class="space-y-2 text-xs font-bold" onsubmit="return false;">
+          <div><label class="block">班次/名稱</label><input type="text" id="t-title" placeholder="例: 成田特快 N'EX" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
           <div class="grid grid-cols-2 gap-2">
             <div><label class="block">出發</label><input type="text" id="t-dep" placeholder="時間地點" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
             <div><label class="block">抵達</label><input type="text" id="t-arr" placeholder="時間地點" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
           </div>
           <div><label class="block">備註</label><input type="text" id="t-note" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
-          <button type="button" onclick="saveTransport()" class="w-full py-2 bg-yamabuki rounded-2xl border-comic font-black mt-2">新增</button>
+          <button type="button" onclick="saveTransport()" class="w-full py-2 bg-yamabuki rounded-2xl border-comic font-black mt-2">儲存交通</button>
         </form>
       `);
     }
 
     function saveTransport() {
+      if (!currentTripId) {
+        showCustomAlert("請先建立或開啟一個旅程計畫！");
+        return;
+      }
       const title = document.getElementById('t-title').value.trim();
-      if (!title) return;
+      if (!title) {
+        showCustomAlert("請填寫交通班次或名稱！");
+        return;
+      }
+      if (!Array.isArray(appData.transports)) appData.transports = [];
+
       appData.transports.push({
         id: 't-' + Date.now(),
         title,
@@ -997,6 +1017,7 @@ function deleteTripFromHistory(targetId, targetTitle) {
     }
 
     function deleteTransport(id) {
+      if (!Array.isArray(appData.transports)) return;
       appData.transports = appData.transports.filter(x => x.id !== id);
       saveAppData();
       renderTransports();
@@ -1004,21 +1025,30 @@ function deleteTripFromHistory(targetId, targetTitle) {
 
     function openAddHotelModal() {
       openModal("新增飯店住宿", `
-        <form class="space-y-2 text-xs font-bold">
-          <div><label class="block">飯店名稱</label><input type="text" id="h-name" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
+        <form class="space-y-2 text-xs font-bold" onsubmit="return false;">
+          <div><label class="block">飯店名稱</label><input type="text" id="h-name" placeholder="例: 新宿格拉斯麗飯店" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
           <div><label class="block">地址</label><input type="text" id="h-addr" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
           <div class="grid grid-cols-2 gap-2">
             <div><label class="block">日期</label><input type="text" id="h-dates" placeholder="11/20~11/22" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
             <div><label class="block">退入住</label><input type="text" id="h-time" value="Check-in 15:00" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
           </div>
-          <button type="button" onclick="saveHotel()" class="w-full py-2 bg-coral rounded-2xl border-comic font-black mt-2">新增</button>
+          <button type="button" onclick="saveHotel()" class="w-full py-2 bg-coral rounded-2xl border-comic font-black mt-2">儲存住宿</button>
         </form>
       `);
     }
 
     function saveHotel() {
+      if (!currentTripId) {
+        showCustomAlert("請先建立或開啟一個旅程計畫！");
+        return;
+      }
       const name = document.getElementById('h-name').value.trim();
-      if (!name) return;
+      if (!name) {
+        showCustomAlert("請填寫飯店名稱！");
+        return;
+      }
+      if (!Array.isArray(appData.hotels)) appData.hotels = [];
+
       appData.hotels.push({
         id: 'h-' + Date.now(),
         name,
@@ -1032,6 +1062,7 @@ function deleteTripFromHistory(targetId, targetTitle) {
     }
 
     function deleteHotel(id) {
+      if (!Array.isArray(appData.hotels)) return;
       appData.hotels = appData.hotels.filter(x => x.id !== id);
       saveAppData();
       renderHotels();
@@ -1040,16 +1071,25 @@ function deleteTripFromHistory(targetId, targetTitle) {
     // 待辦增刪
     function openAddTodoModal() {
       openModal("新增待辦行李", `
-        <div class="space-y-3 text-xs font-bold">
-          <input type="text" id="todo-text" placeholder="例: 護照、日幣" class="w-full p-2 bg-washi rounded-xl border-comic">
-          <button onclick="saveTodo()" class="w-full py-2 bg-wakatake rounded-2xl border-comic font-black">新增</button>
-        </div>
+        <form class="space-y-3 text-xs font-bold" onsubmit="return false;">
+          <input type="text" id="todo-text" placeholder="例: 護照、日幣、行動電源" class="w-full p-2 bg-washi rounded-xl border-comic">
+          <button type="button" onclick="saveTodo()" class="w-full py-2 bg-wakatake rounded-2xl border-comic font-black">儲存項目</button>
+        </form>
       `);
     }
 
     function saveTodo() {
+      if (!currentTripId) {
+        showCustomAlert("請先建立或開啟一個旅程計畫！");
+        return;
+      }
       const text = document.getElementById('todo-text').value.trim();
-      if (!text) return;
+      if (!text) {
+        showCustomAlert("請輸入行李或待辦項目名稱！");
+        return;
+      }
+      if (!Array.isArray(appData.todos)) appData.todos = [];
+
       appData.todos.push({ id: 'todo-' + Date.now(), text, done: false });
       saveAppData();
       closeModal();
@@ -1057,11 +1097,13 @@ function deleteTripFromHistory(targetId, targetTitle) {
     }
 
     function toggleTodo(id) {
+      if (!Array.isArray(appData.todos)) return;
       const t = appData.todos.find(x => x.id === id);
       if (t) { t.done = !t.done; saveAppData(); renderTodos(); }
     }
 
     function deleteTodo(id) {
+      if (!Array.isArray(appData.todos)) return;
       appData.todos = appData.todos.filter(x => x.id !== id);
       saveAppData();
       renderTodos();
