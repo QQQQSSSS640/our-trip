@@ -248,47 +248,52 @@
         <div id="todo-list" class="space-y-2"></div>
       </div>
 
-      <div class="bg-white rounded-3xl border-comic p-4 shadow-comic space-y-4">
-        <div class="flex items-center justify-between border-b-comic pb-2">
-          <div class="flex items-center gap-2">
-            <span class="w-6 h-6 rounded-lg bg-yamabuki border-comic flex items-center justify-center text-xs">💰</span>
-            <h3 class="font-black text-base">多人記帳與結算</h3>
+<div class="bg-white rounded-3xl border-comic p-4 shadow-comic space-y-4">
+        <!-- 標題列與按鈕群（防止窄螢幕按鈕折行） -->
+        <div class="flex items-center justify-between gap-2 border-b-comic pb-2.5">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="w-6 h-6 flex-shrink-0 rounded-lg bg-yamabuki border-comic flex items-center justify-center text-xs">💰</span>
+            <h3 class="font-black text-sm sm:text-base truncate">多人記帳與結算</h3>
           </div>
-          <div class="flex gap-1.5">
-            <button onclick="protectedAction(openAddMemberModal)" class="px-2.5 py-1 bg-washi rounded-xl border-comic text-xs font-black shadow-comic-sm">
-              旅伴設定
+          <div class="flex gap-1.5 flex-shrink-0">
+            <button onclick="protectedAction(openAddMemberModal)" class="px-2 sm:px-2.5 py-1 bg-washi rounded-xl border-comic text-xs font-black shadow-comic-sm active:translate-y-0.5">
+              旅伴
             </button>
-            <button onclick="protectedAction(openAddExpenseModal)" class="px-2.5 py-1 bg-coral rounded-xl border-comic text-xs font-black shadow-comic-sm">
+            <button onclick="protectedAction(openAddExpenseModal)" class="px-2.5 py-1 bg-coral rounded-xl border-comic text-xs font-black shadow-comic-sm active:translate-y-0.5">
               + 記一筆
             </button>
           </div>
         </div>
 
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-xs font-bold text-gray-500">共同旅伴：</span>
-          <div id="member-badges" class="flex flex-wrap gap-1.5"></div>
+        <!-- 共同旅伴標籤列 -->
+        <div class="flex items-start gap-2">
+          <span class="text-xs font-bold text-gray-500 flex-shrink-0 mt-0.5">旅伴：</span>
+          <div id="member-badges" class="flex flex-wrap gap-1.5 flex-1"></div>
         </div>
 
-        <div class="p-3 bg-washi rounded-2xl border-comic flex items-center justify-between">
-          <div>
-            <span class="text-xs font-bold text-gray-500">旅程總支出</span>
-            <div class="text-xl font-black text-sumi">NT$ <span id="total-expenses-amount">0</span></div>
+        <!-- 總支出與平帳按鈕（手機版自動適應寬度不擠壓） -->
+        <div class="p-3 bg-washi rounded-2xl border-comic flex flex-wrap items-center justify-between gap-2">
+          <div class="min-w-0">
+            <span class="text-[11px] font-bold text-gray-500 block">旅程總支出</span>
+            <div class="text-lg sm:text-xl font-black text-sumi truncate">NT$ <span id="total-expenses-amount">0</span></div>
           </div>
-          <button onclick="triggerSettlementConfirm()" class="px-3.5 py-2 bg-yamabuki rounded-2xl border-comic text-xs font-black shadow-comic-sm flex items-center gap-1">
-            <i data-lucide="calculator" class="w-4 h-4"></i>
-            <span>智慧平帳結算</span>
+          <button onclick="triggerSettlementConfirm()" class="px-3 py-2 bg-yamabuki rounded-2xl border-comic text-xs font-black shadow-comic-sm flex items-center gap-1 flex-shrink-0 active:translate-y-0.5">
+            <i data-lucide="calculator" class="w-3.5 h-3.5"></i>
+            <span>智慧平帳</span>
           </button>
         </div>
 
+        <!-- 最近支出紀錄 -->
         <div class="space-y-2">
           <h4 class="text-xs font-black text-gray-500">最近支出紀錄</h4>
-          <div id="expense-list" class="space-y-2 max-h-56 overflow-y-auto no-scrollbar"></div>
+          <div id="expense-list" class="space-y-2 max-h-60 overflow-y-auto no-scrollbar"></div>
         </div>
 
-        <div id="settlement-results-card" class="hidden p-3.5 bg-mizu/20 rounded-2xl border-comic space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-black text-sumi flex items-center gap-1">✨ 最少交易次數結算方案</span>
-            <span class="text-[11px] font-bold text-gray-500">兩兩直接清算</span>
+        <!-- 結算方案結果卡片 -->
+        <div id="settlement-results-card" class="hidden p-3 sm:p-3.5 bg-mizu/20 rounded-2xl border-comic space-y-2">
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-xs font-black text-sumi flex items-center gap-1">✨ 最少轉帳結算方案</span>
+            <span class="text-[10px] font-bold text-gray-500 flex-shrink-0">兩兩清算</span>
           </div>
           <div id="settlement-transactions" class="space-y-1.5"></div>
         </div>
@@ -967,15 +972,17 @@ function executeDeleteTrip(targetId) {
       }
       appData.expenses.forEach(exp => {
         const item = document.createElement('div');
-        item.className = "p-2.5 bg-washi rounded-xl border-comic flex items-center justify-between";
+        item.className = "p-2.5 bg-washi rounded-xl border-comic flex items-center justify-between gap-2";
         item.innerHTML = `
-          <div>
-            <div class="font-black text-xs">${exp.title}</div>
-            <div class="text-[10px] text-gray-500">${exp.payer} 先付 / 分攤: ${exp.participants.join('、')}</div>
+          <div class="min-w-0 flex-1">
+            <div class="font-black text-xs text-sumi truncate">${exp.title}</div>
+            <div class="text-[10px] text-gray-500 truncate mt-0.5">${exp.payer} 先付 ・ 分攤: ${exp.participants.join('、')}</div>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="font-black text-sm">NT$ ${Number(exp.amount).toLocaleString()}</span>
-            <button onclick="protectedAction(() => deleteExpense('${exp.id}'))" class="text-gray-400 p-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <span class="font-black text-xs sm:text-sm text-sumi">NT$ ${Number(exp.amount).toLocaleString()}</span>
+            <button onclick="protectedAction(() => deleteExpense('${exp.id}'))" class="text-gray-400 hover:text-coral p-1">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
           </div>
         `;
         list.appendChild(item);
@@ -1433,13 +1440,13 @@ function saveItinerary(editId) {
         list.innerHTML = '<div class="text-center text-xs font-bold py-2 text-gray-600">大家剛好都平攤了，無需轉帳！🎉</div>';
       } else {
         list.innerHTML = txs.map(t => `
-          <div class="flex items-center justify-between p-2.5 bg-white rounded-xl border-comic text-xs font-black shadow-comic-sm">
-            <div class="flex items-center gap-1.5">
-              <span class="px-2 py-0.5 rounded bg-coral/30 text-sumi border-comic">${t.from}</span>
-              <span class="text-gray-400">應付給 ➔</span>
-              <span class="px-2 py-0.5 rounded bg-wakatake text-sumi border-comic">${t.to}</span>
+          <div class="flex items-center justify-between gap-2 p-2.5 bg-white rounded-xl border-comic text-xs font-black shadow-comic-sm">
+            <div class="flex items-center gap-1 min-w-0 flex-1">
+              <span class="px-1.5 py-0.5 rounded bg-coral/30 text-sumi border-comic truncate max-w-[72px] sm:max-w-none">${t.from}</span>
+              <span class="text-gray-400 text-[10px] flex-shrink-0">➔</span>
+              <span class="px-1.5 py-0.5 rounded bg-wakatake text-sumi border-comic truncate max-w-[72px] sm:max-w-none">${t.to}</span>
             </div>
-            <div class="text-coral text-sm">NT$ ${Math.round(t.amt).toLocaleString()}</div>
+            <div class="text-coral text-xs sm:text-sm flex-shrink-0">NT$ ${Math.round(t.amt).toLocaleString()}</div>
           </div>
         `).join('');
       }
