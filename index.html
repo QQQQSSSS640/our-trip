@@ -318,27 +318,33 @@
     const db = firebase.database();
 
     // 取得當前旅程 ID (預設為 default)
+    // 取得網址參數或本機最後開啟的紀錄 (不預設強迫建立 default)
     const urlParams = new URLSearchParams(window.location.search);
-    let currentTripId = urlParams.get('trip') || localStorage.getItem('last_active_trip') || 'default';
+    const paramTrip = urlParams.get('trip');
+    const storedHistory = getStoredTripList();
+    let currentTripId = paramTrip || localStorage.getItem('last_active_trip') || (storedHistory.length > 0 ? storedHistory[0].id : null);
     let currentPin = null;
     let isUnlocked = false;
 
-    // 記住本機看過的旅程清單
+    // 取得本機手札庫清單 (預設為空陣列，絕不自動塞入假計畫)
     function getStoredTripList() {
       try {
-        return JSON.parse(localStorage.getItem('my_trip_history')) || [{ id: 'default', title: '預設手帳' }];
+        const list = JSON.parse(localStorage.getItem('my_trip_history'));
+        return Array.isArray(list) ? list : [];
       } catch (e) {
-        return [{ id: 'default', title: '預設手帳' }];
+        return [];
       }
     }
 
+    // 只有明確建立或透過連結開啟有效計畫時，才收錄進本機手札庫
     function recordTripToHistory(id, title) {
+      if (!id) return;
       let list = getStoredTripList();
       const existing = list.find(x => x.id === id);
       if (existing) {
         existing.title = title || existing.title;
       } else {
-        list.push({ id, title: title || id });
+        list.push({ id, title: title || '未命名旅程' });
       }
       localStorage.setItem('my_trip_history', JSON.stringify(list));
       localStorage.setItem('last_active_trip', id);
@@ -354,52 +360,76 @@
       },
       currentSelectedDay: 1,
       weatherCache: { temp: "16°C", condition: "晴朗舒適", rain: "10%", icon: "☀️" },
-      itinerary: [
-        { id: "item-1", day: 1, time: "10:30", category: "spot", title: "抵達機場", location: "機場", mustVisit: true, note: "領取交通卡", navMode: "transit" }
-      ],
+      itinerary: [],
       transports: [],
       hotels: [],
       todos: [
         { id: "todo-1", text: "檢查護照與行李", done: false }
       ],
-      members: ["我", "旅伴A"],
+      members: ["我"],
       expenses: []
     };
 
     let appData = JSON.parse(JSON.stringify(defaultAppData));
-    let tripRef = db.ref('trips/' + currentTripId);
+    let tripRef = null;
 
-    // 監聽雲端資料
+    // 監聽雲端資料 (嚴格模式：絕不自動建立新計畫)
     function listenToCurrentTrip() {
       if (tripRef) tripRef.off();
+
+      // 若完全沒有指定行程且本機無紀錄，顯示歡迎引導畫面
+      if (!currentTripId) {
+        showEmptyWelcomeScreen();
+        return;
+      }
+
       tripRef = db.ref('trips/' + currentTripId);
 
       tripRef.on('value', (snapshot) => {
         const cloud = snapshot.val();
-        if (cloud) {
+        if (cloud && cloud.appData) {
+          // 有效旅程：讀取資料並收錄至本機手札庫
           currentPin = cloud.pin || null;
-          appData = cloud.appData || JSON.parse(JSON.stringify(defaultAppData));
+          appData = cloud.appData;
           recordTripToHistory(currentTripId, appData.meta.title);
           renderAll();
+          checkSessionPin();
         } else {
-          // 首次開立
-          currentPin = null;
-          appData = JSON.parse(JSON.stringify(defaultAppData));
-          tripRef.set({ pin: null, appData });
-          recordTripToHistory(currentTripId, appData.meta.title);
-          renderAll();
+          // 雲端查無此計畫 (網址錯誤或已被刪除)：絕不自動建立！
+          // 從本機紀錄中移除該失效 ID
+          let list = getStoredTripList().filter(x => x.id !== currentTripId);
+          localStorage.setItem('my_trip_history', JSON.stringify(list));
+          if (localStorage.getItem('last_active_trip') === currentTripId) {
+            localStorage.removeItem('last_active_trip');
+          }
+          
+          // 清除網址列無效參數
+          window.history.replaceState({}, document.title, window.location.pathname);
+          currentTripId = null;
+          showEmptyWelcomeScreen("找不到該旅程計畫，可能連結有誤或已被主揪刪除。");
         }
-        checkSessionPin();
       });
     }
 
-    function saveAppData() {
-      if (tripRef) {
-        tripRef.child('appData').set(appData);
+    // 無計畫時的引導畫面
+    function showEmptyWelcomeScreen(alertMsg = null) {
+      document.getElementById('nav-title').textContent = "旅行手札";
+      document.getElementById('hero-title').textContent = "尚未選擇旅程計畫";
+      document.getElementById('hero-dest').textContent = "點擊右上角「+ 新計畫」開始";
+      document.getElementById('hero-date-range').textContent = "或透過旅伴分享的專屬連結加入行程";
+      
+      if (alertMsg) {
+        showCustomAlert(alertMsg);
+      } else {
+        openTripManagerModal();
       }
-      recordTripToHistory(currentTripId, appData.meta.title);
     }
 
+    function saveAppData() {
+      if (!currentTripId || !tripRef) return;
+      tripRef.child('appData').set(appData);
+      recordTripToHistory(currentTripId, appData.meta.title);
+    }
     /* ============================================================
        2. PIN 碼安全共編機制 (無 PIN 則所有人可編；有 PIN 需解鎖)
        ============================================================ */
@@ -476,28 +506,26 @@
     /* ============================================================
        3. 介面上「新建旅程」與「切換旅程」彈窗 (無需手打網址)
        ============================================================ */
- function openTripManagerModal() {
+function openTripManagerModal() {
       const history = getStoredTripList();
-      const listHtml = history.map(item => `
+      const listHtml = history.length > 0 ? history.map(item => `
         <div class="flex items-center justify-between p-2.5 bg-washi rounded-xl border-comic ${item.id === currentTripId ? 'ring-2 ring-coral' : ''}">
           <div class="cursor-pointer flex-1 pr-2" onclick="switchTrip('${item.id}')">
             <div class="font-black text-xs text-sumi">${item.title}</div>
-            <div class="text-[10px] text-gray-400">ID: ${item.id} ${item.id === currentTripId ? '（目前使用中）' : ''}</div>
+            <div class="text-[10px] text-gray-400">代碼: ${item.id} ${item.id === currentTripId ? '（目前開啟）' : ''}</div>
           </div>
           <div class="flex items-center gap-1.5">
             <button onclick="switchTrip('${item.id}')" class="px-2.5 py-1 bg-white hover:bg-yamabuki rounded-lg border-comic text-xs font-black shadow-comic-sm">
               開啟
             </button>
-            ${item.id !== 'default' ? `
-              <button onclick="deleteTripFromHistory('${item.id}', '${item.title}')" class="p-1.5 bg-white hover:bg-coral rounded-lg border-comic text-gray-500 hover:text-sumi shadow-comic-sm" title="刪除此計畫">
-                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-              </button>
-            ` : ''}
+            <button onclick="deleteTripFromHistory('${item.id}', '${item.title}')" class="p-1.5 bg-white hover:bg-coral rounded-lg border-comic text-gray-500 hover:text-sumi shadow-comic-sm" title="刪除此計畫">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
           </div>
         </div>
-      `).join('');
+      `).join('') : `<div class="text-center text-xs text-gray-400 py-3 font-bold">目前手札庫是空的，請在下方建立新計畫，或直接點開朋友分享的連結加入！</div>`;
 
-      openModal("我的旅程手札庫", `
+      openModal("我的專屬手札庫", `
         <div class="space-y-4 text-xs font-bold">
           <div class="space-y-2 max-h-48 overflow-y-auto no-scrollbar">
             ${listHtml}
@@ -512,8 +540,8 @@
             </button>
           </div>
         </div>
-     `);
-      safeLucide(); // <-- 在這裡補上這行，確保垃圾桶圖示正常顯示
+      `);
+      safeLucide();
     }
 
     function deleteTripFromHistory(targetId, targetTitle) {
@@ -529,17 +557,18 @@
       safeLucide();
     }
 
-    function executeDeleteTrip(targetId) {
-      // 1. 從本機歷史清單移除
+function executeDeleteTrip(targetId) {
       let list = getStoredTripList().filter(x => x.id !== targetId);
       localStorage.setItem('my_trip_history', JSON.stringify(list));
       localStorage.removeItem('unlocked_' + targetId);
+      if (localStorage.getItem('last_active_trip') === targetId) {
+        localStorage.removeItem('last_active_trip');
+      }
 
-      // 2. 從 Firebase 雲端移除該房間資料
       db.ref('trips/' + targetId).remove().then(() => {
         if (targetId === currentTripId) {
-          // 若刪除的是當前正在看的計畫，自動跳轉回預設手札
-          switchTrip('default');
+          // 若刪除的是目前開啟的計畫，跳轉回乾淨首頁（不帶任何參數，也不自動建新檔）
+          window.location.href = window.location.pathname;
         } else {
           openTripManagerModal();
         }
