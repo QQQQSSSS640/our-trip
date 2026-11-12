@@ -85,36 +85,37 @@
 <body class="bg-washi min-h-screen text-sumi flex flex-col items-center">
 
   <!-- 頂端導航列 -->
-  <header class="sticky top-0 z-40 w-full max-w-md md:max-w-xl bg-washi border-b-comic px-4 py-2.5 flex items-center justify-between">
-    <div class="flex items-center space-x-2">
-      <!-- 點擊手帳圖示直接打開旅程切換與管理 -->
-      <button onclick="openTripManagerModal()" class="w-8 h-8 rounded-full bg-coral border-comic flex items-center justify-center text-xs font-black shadow-comic-sm hover:scale-105 active:scale-95 transition-transform" title="切換或建立新旅程">
+<!-- 頂端導航列（手機與電腦雙版最佳化排版） -->
+  <header class="sticky top-0 z-40 w-full max-w-md md:max-w-xl bg-washi border-b-comic px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
+    <!-- 左側：手札切換與標題狀態 -->
+    <div class="flex items-center gap-2 min-w-0 flex-1">
+      <button onclick="openTripManagerModal()" class="w-8 h-8 flex-shrink-0 rounded-full bg-coral border-comic flex items-center justify-center text-xs font-black shadow-comic-sm hover:scale-105 active:scale-95 transition-transform" title="切換或建立新旅程">
         📖
       </button>
-      <div>
-        <div class="flex items-center gap-1.5">
-          <h1 id="nav-title" class="font-extrabold text-sm tracking-wide truncate max-w-[130px]">旅行手札</h1>
-          <button onclick="openTripManagerModal()" class="text-[11px] font-black text-gray-400 hover:text-sumi">▾ 切換</button>
-        </div>
+      <div class="min-w-0 flex-1">
         <div class="flex items-center gap-1">
-          <span id="lock-status-badge" onclick="promptUnlockPin()" class="cursor-pointer text-[10px] font-black px-1.5 py-0.2 rounded bg-washi border-comic">
+          <h1 id="nav-title" onclick="openTripManagerModal()" class="cursor-pointer font-extrabold text-sm tracking-wide truncate">旅行手札</h1>
+          <button onclick="openTripManagerModal()" class="flex-shrink-0 text-[11px] font-black text-gray-400 hover:text-sumi">▾</button>
+        </div>
+        <div class="flex items-center mt-0.5">
+          <span id="lock-status-badge" onclick="promptUnlockPin()" class="cursor-pointer text-[10px] font-black px-1.5 py-0 rounded bg-washi border-comic truncate max-w-full inline-block">
             🔒 訪客模式
           </span>
         </div>
       </div>
     </div>
     
-  <div class="flex items-center gap-1.5">
-      <!-- Google 登入狀態按鈕 -->
+    <!-- 右側：功能操作按鈕群（手機版精簡為圖示，桌面版顯示完整文字） -->
+    <div class="flex items-center gap-1.5 flex-shrink-0">
       <button id="google-auth-btn" onclick="handleGoogleAuth()" class="px-2 py-1.5 bg-white rounded-xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm active:translate-y-0.5" title="登入 Google 跨裝置同步">
         <span class="text-coral font-black">G</span>
-        <span>登入</span>
+        <span class="hidden sm:inline">登入</span>
       </button>
-      <button onclick="openShareModal()" class="px-2.5 py-1.5 bg-mizu rounded-xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm active:translate-y-0.5">
+      <button onclick="openShareModal()" class="px-2 sm:px-2.5 py-1.5 bg-mizu rounded-xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm active:translate-y-0.5" title="分享與匯出">
         <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
-        <span>分享</span>
+        <span class="hidden sm:inline">分享</span>
       </button>
-      <button onclick="openTripManagerModal()" class="px-2.5 py-1.5 bg-yamabuki rounded-xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm active:translate-y-0.5">
+      <button onclick="openTripManagerModal()" class="px-2.5 py-1.5 bg-yamabuki rounded-xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm active:translate-y-0.5" title="建立或切換計畫">
         <i data-lucide="plus" class="w-3.5 h-3.5"></i>
         <span>新計畫</span>
       </button>
@@ -359,11 +360,11 @@
       currentUser = user;
       const btn = document.getElementById('google-auth-btn');
       if (user) {
-        btn.innerHTML = `<img src="${user.photoURL}" class="w-4 h-4 rounded-full border border-sumi"><span class="max-w-[45px] truncate">${user.displayName.split(' ')[0]}</span>`;
+        btn.innerHTML = `<img src="${user.photoURL}" class="w-4 h-4 rounded-full border border-sumi"><span class="hidden sm:inline max-w-[45px] truncate">${user.displayName.split(' ')[0]}</span>`;
         btn.classList.replace('bg-white', 'bg-wakatake/40');
         syncUserCloudProfile(user.uid);
       } else {
-        btn.innerHTML = `<span class="text-coral font-black">G</span><span>登入</span>`;
+        btn.innerHTML = `<span class="text-coral font-black">G</span><span class="hidden sm:inline">登入</span>`;
         btn.classList.replace('bg-wakatake/40', 'bg-white');
         cloudUserHistory = null;
         cloudUserUnlocks = {};
