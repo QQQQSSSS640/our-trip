@@ -404,7 +404,7 @@
        2. PIN 碼安全共編機制 (無 PIN 則所有人可編；有 PIN 需解鎖)
        ============================================================ */
     function checkSessionPin() {
-      const savedPin = sessionStorage.getItem('unlocked_' + currentTripId);
+      const savedPin = localStorage.getItem('unlocked_' + currentTripId);
       if (!currentPin || savedPin === currentPin) {
         isUnlocked = true;
       } else {
@@ -461,7 +461,7 @@
       const pin = document.getElementById('input-verify-pin').value.trim();
       if (pin === currentPin) {
         isUnlocked = true;
-        sessionStorage.setItem('unlocked_' + currentTripId, pin);
+        localStorage.setItem('unlocked_' + currentTripId, pin);
         updateLockBadge();
         closeModal();
         if (window._pinCallback) {
@@ -476,17 +476,24 @@
     /* ============================================================
        3. 介面上「新建旅程」與「切換旅程」彈窗 (無需手打網址)
        ============================================================ */
-    function openTripManagerModal() {
+ function openTripManagerModal() {
       const history = getStoredTripList();
       const listHtml = history.map(item => `
         <div class="flex items-center justify-between p-2.5 bg-washi rounded-xl border-comic ${item.id === currentTripId ? 'ring-2 ring-coral' : ''}">
-          <div class="cursor-pointer flex-1" onclick="switchTrip('${item.id}')">
+          <div class="cursor-pointer flex-1 pr-2" onclick="switchTrip('${item.id}')">
             <div class="font-black text-xs text-sumi">${item.title}</div>
             <div class="text-[10px] text-gray-400">ID: ${item.id} ${item.id === currentTripId ? '（目前使用中）' : ''}</div>
           </div>
-          <button onclick="switchTrip('${item.id}')" class="px-2 py-1 bg-white hover:bg-yamabuki rounded-lg border-comic text-xs font-black shadow-comic-sm">
-            開啟
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button onclick="switchTrip('${item.id}')" class="px-2.5 py-1 bg-white hover:bg-yamabuki rounded-lg border-comic text-xs font-black shadow-comic-sm">
+              開啟
+            </button>
+            ${item.id !== 'default' ? `
+              <button onclick="deleteTripFromHistory('${item.id}', '${item.title}')" class="p-1.5 bg-white hover:bg-coral rounded-lg border-comic text-gray-500 hover:text-sumi shadow-comic-sm" title="刪除此計畫">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            ` : ''}
+          </div>
         </div>
       `).join('');
 
@@ -508,6 +515,36 @@
       `);
     }
 
+    function deleteTripFromHistory(targetId, targetTitle) {
+      openModal("確認刪除計畫", `
+        <div class="space-y-4 text-center text-xs font-bold">
+          <p class="text-sm text-sumi py-2">確定要刪除「<span class="text-coral font-black">${targetTitle}</span>」嗎？<br><span class="text-gray-500 text-xs">刪除後雲端與本機資料將無法恢復！</span></p>
+          <div class="flex gap-2">
+            <button onclick="openTripManagerModal()" class="flex-1 py-2 bg-washi rounded-2xl border-comic font-black">取消</button>
+            <button onclick="executeDeleteTrip('${targetId}')" class="flex-1 py-2 bg-coral rounded-2xl border-comic font-black">確認刪除</button>
+         </div>
+        </div>
+      `);
+      safeLucide();
+    }
+
+    function executeDeleteTrip(targetId) {
+      // 1. 從本機歷史清單移除
+      let list = getStoredTripList().filter(x => x.id !== targetId);
+      localStorage.setItem('my_trip_history', JSON.stringify(list));
+      localStorage.removeItem('unlocked_' + targetId);
+
+      // 2. 從 Firebase 雲端移除該房間資料
+      db.ref('trips/' + targetId).remove().then(() => {
+        if (targetId === currentTripId) {
+          // 若刪除的是當前正在看的計畫，自動跳轉回預設手札
+          switchTrip('default');
+        } else {
+          openTripManagerModal();
+        }
+      });
+    }
+
     function confirmCreateNewTrip() {
       const name = document.getElementById('new-trip-name').value.trim();
       const pin = document.getElementById('new-trip-pin').value.trim() || null;
@@ -525,7 +562,7 @@
         pin: pin,
         appData: newAppData
       }).then(() => {
-        if (pin) sessionStorage.setItem('unlocked_' + newId, pin);
+        if (pin) localStorage.setItem('unlocked_' + newId, pin);
         recordTripToHistory(newId, name);
         closeModal();
         switchTrip(newId);
@@ -1145,42 +1182,70 @@
     }
 
     function triggerSettlementConfirm() {
-      if (!appData.expenses || appData.expenses.length === 0) return;
+      if (!appData.expenses || appData.expenses.length === 0) {
+        showCustomAlert("目前還沒有任何支出資料可以結算喔！");
+        return;
+      }
+
       const balances = {};
       appData.members.forEach(m => balances[m] = 0);
+
       appData.expenses.forEach(e => {
-        const amt = Number(e.amount);
+        const amt = Math.round(Number(e.amount));
         balances[e.payer] = (balances[e.payer] || 0) + amt;
-        const share = amt / e.participants.length;
-        e.participants.forEach(p => balances[p] = (balances[p] || 0) - share);
+        
+        // 每人分攤金額四捨五入至整數
+        const share = Math.round(amt / e.participants.length);
+        e.participants.forEach(p => {
+          balances[p] = (balances[p] || 0) - share;
+        });
       });
 
       const debtors = [], creditors = [];
       for (const [p, bal] of Object.entries(balances)) {
         const r = Math.round(bal);
-        if (r < -1) debtors.push({ p, amt: -r });
-        else if (r > 1) creditors.push({ p, amt: r });
+        if (r < 0) debtors.push({ p, amt: -r });
+        else if (r > 0) creditors.push({ p, amt: r });
       }
+
+      // 金額降序排列以達到最少轉帳次數
+      debtors.sort((a, b) => b.amt - a.amt);
+      creditors.sort((a, b) => b.amt - a.amt);
 
       const txs = [];
       let i = 0, j = 0;
       while (i < debtors.length && j < creditors.length) {
         const s = Math.min(debtors[i].amt, creditors[j].amt);
-        txs.push({ from: debtors[i].p, to: creditors[j].p, amt: Math.round(s) });
-        debtors[i].amt -= s; creditors[j].amt -= s;
-        if (debtors[i].amt <= 1) i++;
-        if (creditors[j].amt <= 1) j++;
+        const roundedSettle = Math.round(s);
+        
+        if (roundedSettle > 0) {
+          txs.push({ from: debtors[i].p, to: creditors[j].p, amt: roundedSettle });
+        }
+        
+        debtors[i].amt -= s;
+        creditors[j].amt -= s;
+        if (debtors[i].amt <= 0) i++;
+        if (creditors[j].amt <= 0) j++;
       }
 
       const card = document.getElementById('settlement-results-card');
       const list = document.getElementById('settlement-transactions');
       card.classList.remove('hidden');
-      list.innerHTML = txs.map(t => `
-        <div class="flex items-center justify-between p-2 bg-white rounded-xl border-comic text-xs font-black">
-          <div><span class="text-coral">${t.from}</span> ➔ <span class="text-wakatake">${t.to}</span></div>
-          <div class="text-coral">NT$ ${t.amt.toLocaleString()}</div>
-        </div>
-      `).join('') || '<div class="text-center text-xs py-2">大家剛好都平攤了！</div>';
+      
+      if (txs.length === 0) {
+        list.innerHTML = '<div class="text-center text-xs font-bold py-2 text-gray-600">大家剛好都平攤了，無需轉帳！🎉</div>';
+      } else {
+        list.innerHTML = txs.map(t => `
+          <div class="flex items-center justify-between p-2.5 bg-white rounded-xl border-comic text-xs font-black shadow-comic-sm">
+            <div class="flex items-center gap-1.5">
+              <span class="px-2 py-0.5 rounded bg-coral/30 text-sumi border-comic">${t.from}</span>
+              <span class="text-gray-400">應付給 ➔</span>
+              <span class="px-2 py-0.5 rounded bg-wakatake text-sumi border-comic">${t.to}</span>
+            </div>
+            <div class="text-coral text-sm">NT$ ${t.amt.toLocaleString()}</div>
+          </div>
+        `).join('');
+      }
       card.scrollIntoView({ behavior: 'smooth' });
     }
 
