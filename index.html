@@ -544,20 +544,21 @@ function openTripManagerModal() {
       safeLucide();
     }
 
-    function deleteTripFromHistory(targetId, targetTitle) {
-      openModal("確認刪除計畫", `
+function deleteTripFromHistory(targetId, targetTitle) {
+      openModal("移除手札紀錄", `
         <div class="space-y-4 text-center text-xs font-bold">
-          <p class="text-sm text-sumi py-2">確定要刪除「<span class="text-coral font-black">${targetTitle}</span>」嗎？<br><span class="text-gray-500 text-xs">刪除後雲端與本機資料將無法恢復！</span></p>
+          <p class="text-sm text-sumi py-2">確定要從您的手札庫移除「<span class="text-coral font-black">${targetTitle}</span>」嗎？<br><span class="text-gray-500 text-xs">此操作僅會從您的裝置清單移除，不會刪除雲端資料，其他旅伴仍可正常使用（日後透過原連結仍可重新加入）。</span></p>
           <div class="flex gap-2">
             <button onclick="openTripManagerModal()" class="flex-1 py-2 bg-washi rounded-2xl border-comic font-black">取消</button>
-            <button onclick="executeDeleteTrip('${targetId}')" class="flex-1 py-2 bg-coral rounded-2xl border-comic font-black">確認刪除</button>
-         </div>
+            <button onclick="executeDeleteTrip('${targetId}')" class="flex-1 py-2 bg-coral rounded-2xl border-comic font-black">確認移除</button>
+          </div>
         </div>
       `);
       safeLucide();
     }
 
-function executeDeleteTrip(targetId) {
+    function executeDeleteTrip(targetId) {
+      // 僅從「目前這台裝置」的本機歷史清單與解鎖紀錄移除，不動到 Firebase 雲端資料庫
       let list = getStoredTripList().filter(x => x.id !== targetId);
       localStorage.setItem('my_trip_history', JSON.stringify(list));
       localStorage.removeItem('unlocked_' + targetId);
@@ -565,14 +566,12 @@ function executeDeleteTrip(targetId) {
         localStorage.removeItem('last_active_trip');
       }
 
-      db.ref('trips/' + targetId).remove().then(() => {
-        if (targetId === currentTripId) {
-          // 若刪除的是目前開啟的計畫，跳轉回乾淨首頁（不帶任何參數，也不自動建新檔）
-          window.location.href = window.location.pathname;
-        } else {
-          openTripManagerModal();
-        }
-      });
+      if (targetId === currentTripId) {
+        // 若移除的是目前開啟的計畫，跳轉回乾淨首頁
+        window.location.href = window.location.pathname;
+      } else {
+        openTripManagerModal();
+      }
     }
 
     function confirmCreateNewTrip() {
