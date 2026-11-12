@@ -512,7 +512,8 @@
             </button>
           </div>
         </div>
-      `);
+     `);
+      safeLucide(); // <-- 在這裡補上這行，確保垃圾桶圖示正常顯示
     }
 
     function deleteTripFromHistory(targetId, targetTitle) {
@@ -1181,57 +1182,71 @@
       renderBudgetModule();
     }
 
-    function triggerSettlementConfirm() {
+   function triggerSettlementConfirm() {
       if (!appData.expenses || appData.expenses.length === 0) {
         showCustomAlert("目前還沒有任何支出資料可以結算喔！");
         return;
       }
 
+      // 1. 計算每個人在此趟旅程的淨收支 (Net Balance)
       const balances = {};
       appData.members.forEach(m => balances[m] = 0);
 
       appData.expenses.forEach(e => {
         const amt = Math.round(Number(e.amount));
         balances[e.payer] = (balances[e.payer] || 0) + amt;
-        
-        // 每人分攤金額四捨五入至整數
+
+        // 單次分攤金額採嚴格四捨五入至整數
         const share = Math.round(amt / e.participants.length);
         e.participants.forEach(p => {
           balances[p] = (balances[p] || 0) - share;
         });
       });
 
-      const debtors = [], creditors = [];
+      // 2. 將每位成員的總餘額嚴格四捨五入為整數，區分為「該付錢者 (debtors)」與「該收錢者 (creditors)」
+      const debtors = [];
+      const creditors = [];
+
       for (const [p, bal] of Object.entries(balances)) {
-        const r = Math.round(bal);
-        if (r < 0) debtors.push({ p, amt: -r });
-        else if (r > 0) creditors.push({ p, amt: r });
+        const finalBal = Math.round(bal);
+        if (finalBal < 0) {
+          debtors.push({ p, amt: Math.abs(finalBal) });
+        } else if (finalBal > 0) {
+          creditors.push({ p, amt: finalBal });
+        }
       }
 
-      // 金額降序排列以達到最少轉帳次數
+      // 3. 依金額大到小排序，以達到最少筆數結清
       debtors.sort((a, b) => b.amt - a.amt);
       creditors.sort((a, b) => b.amt - a.amt);
 
       const txs = [];
       let i = 0, j = 0;
+
       while (i < debtors.length && j < creditors.length) {
-        const s = Math.min(debtors[i].amt, creditors[j].amt);
-        const roundedSettle = Math.round(s);
-        
-        if (roundedSettle > 0) {
-          txs.push({ from: debtors[i].p, to: creditors[j].p, amt: roundedSettle });
+        // 取兩者之間較小的值，並進行四捨五入確保完全是整數
+        const settleAmt = Math.round(Math.min(debtors[i].amt, creditors[j].amt));
+
+        if (settleAmt >= 1) {
+          txs.push({
+            from: debtors[i].p,
+            to: creditors[j].p,
+            amt: settleAmt
+          });
         }
-        
-        debtors[i].amt -= s;
-        creditors[j].amt -= s;
+
+        debtors[i].amt = Math.round(debtors[i].amt - settleAmt);
+        creditors[j].amt = Math.round(creditors[j].amt - settleAmt);
+
         if (debtors[i].amt <= 0) i++;
         if (creditors[j].amt <= 0) j++;
       }
 
+      // 4. 渲染至畫面
       const card = document.getElementById('settlement-results-card');
       const list = document.getElementById('settlement-transactions');
       card.classList.remove('hidden');
-      
+
       if (txs.length === 0) {
         list.innerHTML = '<div class="text-center text-xs font-bold py-2 text-gray-600">大家剛好都平攤了，無需轉帳！🎉</div>';
       } else {
@@ -1242,7 +1257,7 @@
               <span class="text-gray-400">應付給 ➔</span>
               <span class="px-2 py-0.5 rounded bg-wakatake text-sumi border-comic">${t.to}</span>
             </div>
-            <div class="text-coral text-sm">NT$ ${t.amt.toLocaleString()}</div>
+            <div class="text-coral text-sm">NT$ ${Math.round(t.amt).toLocaleString()}</div>
           </div>
         `).join('');
       }
