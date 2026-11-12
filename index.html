@@ -378,37 +378,69 @@
     });
 
     // 登入後自動合併本機與雲端的手札庫及解鎖紀錄
+    // 登入後以雲端帳號資料為準，並同步更新本機快取（確保任一裝置刪除後不會被舊本機資料蓋回）
     function syncUserCloudProfile(uid) {
       const userRef = db.ref('users/' + uid);
+      let isFirstSync = true;
+
       userRef.on('value', (snap) => {
         const data = snap.val() || {};
-        const localHistory = JSON.parse(localStorage.getItem('my_trip_history')) || [];
         const remoteHistory = Array.isArray(data.history) ? data.history : [];
+        const remoteUnlocks = data.unlocks || {};
 
-        // 合併兩邊的手札清單（不重複）
-        const mergedMap = new Map();
-        [...remoteHistory, ...localHistory].forEach(item => {
-          if (item && item.id) mergedMap.set(item.id, item);
-        });
-        cloudUserHistory = Array.from(mergedMap.values());
+        if (isFirstSync) {
+          // 僅在「剛登入的第一瞬間」，將本機離線建立的紀錄合併進雲端
+          isFirstSync = false;
+          const localHistory = JSON.parse(localStorage.getItem('my_trip_history')) || [];
+          const mergedMap = new Map();
+          [...remoteHistory, ...localHistory].forEach(item => {
+            if (item && item.id) mergedMap.set(item.id, item);
+          });
+          cloudUserHistory = Array.from(mergedMap.values());
 
-        // 合併解鎖紀錄
-        cloudUserUnlocks = data.unlocks || {};
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith('unlocked_')) {
-            const tid = key.replace('unlocked_', '');
-            cloudUserUnlocks[tid] = localStorage.getItem(key);
+          cloudUserUnlocks = { ...remoteUnlocks };
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('unlocked_')) {
+              const tid = key.replace('unlocked_', '');
+              cloudUserUnlocks[tid] = localStorage.getItem(key);
+            }
           }
+
+          userRef.update({
+            history: cloudUserHistory,
+            unlocks: cloudUserUnlocks
+          });
+        } else {
+          // 登入後的每一次即時變動（包含在別台裝置刪除行程），完全以雲端最新清單為準！
+          cloudUserHistory = remoteHistory;
+          cloudUserUnlocks = remoteUnlocks;
         }
 
-        // 回寫最新合併結果至該使用者的 Google 雲端空間
-        userRef.update({
-          history: cloudUserHistory,
-          unlocks: cloudUserUnlocks
+        // 將雲端最新狀態覆寫回本機 localStorage，徹底清掉已在別台裝置刪除的幽靈紀錄
+        localStorage.setItem('my_trip_history', JSON.stringify(cloudUserHistory));
+        
+        // 同步清理本機已失效的解鎖快取
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('unlocked_')) {
+            const tid = key.replace('unlocked_', '');
+            if (cloudUserUnlocks[tid]) {
+              localStorage.setItem(key, cloudUserUnlocks[tid]);
+            } else {
+              localStorage.removeItem(key);
+            }
+          }
         });
 
         checkSessionPin();
+
+        // 若手札庫彈窗目前正開著，即時刷新列表畫面
+        const modalTitle = document.getElementById('modal-title');
+        const globalModal = document.getElementById('global-modal');
+        if (globalModal && !globalModal.classList.contains('hidden') && modalTitle && modalTitle.textContent === "我的專屬手札庫") {
+          openTripManagerModal();
+        }
+
         if (!currentTripId && cloudUserHistory.length > 0) {
           switchTrip(cloudUserHistory[0].id);
         }
@@ -678,16 +710,22 @@ function executeDeleteTrip(targetId) {
       if (currentUser) {
         cloudUserHistory = list;
         delete cloudUserUnlocks[targetId];
-        db.ref('users/' + currentUser.uid).update({
+        db.ref('users/' + currentUser.uid).set({
           history: list,
           unlocks: cloudUserUnlocks
+        }).then(() => {
+          if (targetId === currentTripId) {
+            window.location.href = window.location.pathname;
+          } else {
+            openTripManagerModal();
+          }
         });
-      }
-
-      if (targetId === currentTripId) {
-        window.location.href = window.location.pathname;
       } else {
-        openTripManagerModal();
+        if (targetId === currentTripId) {
+          window.location.href = window.location.pathname;
+        } else {
+          openTripManagerModal();
+        }
       }
     }
 
