@@ -1039,46 +1039,102 @@
       renderHero();
     }
 
-    function openAddExpenseModal() {
+   function openAddExpenseModal() {
       if (!appData.members || appData.members.length === 0) {
-        showCustomAlert("請先新增旅伴！");
+        showCustomAlert("目前還沒有旅伴，請先點選「旅伴設定」新增成員！");
         return;
       }
       const memberOptions = appData.members.map(m => `<option value="${m}">${m}</option>`).join('');
       const checkboxes = appData.members.map(m => `
-        <label class="flex items-center gap-1 p-1 bg-washi rounded border-comic"><input type="checkbox" name="exp-p" value="${m}" checked> <span>${m}</span></label>
+        <label class="flex items-center gap-1.5 p-1.5 bg-washi rounded-lg border-comic cursor-pointer text-xs font-black">
+          <input type="checkbox" name="expense_member_check" value="${m}" checked class="rounded border-comic w-4 h-4">
+          <span>${m}</span>
+        </label>
       `).join('');
 
       openModal("記帳支出", `
-        <form class="space-y-2 text-xs font-bold">
-          <div><label class="block">品項</label><input type="text" id="exp-title" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
-          <div class="grid grid-cols-2 gap-2">
-            <div><label class="block">金額</label><input type="number" id="exp-amt" class="w-full p-2 bg-washi rounded-xl border-comic"></div>
-            <div><label class="block">付款人</label><select id="exp-payer" class="w-full p-2 bg-washi rounded-xl border-comic">${memberOptions}</select></div>
+        <form class="space-y-3 text-xs font-bold" onsubmit="return false;">
+          <div>
+            <label class="block mb-1">消費品項名稱</label>
+            <input type="text" id="exp-title" placeholder="例: 居酒屋晚餐、晴空塔門票" class="w-full p-2 bg-washi rounded-xl border-comic font-black text-sm">
           </div>
-          <div><label class="block">分攤人</label><div class="flex flex-wrap gap-2 pt-1">${checkboxes}</div></div>
-          <button type="button" onclick="saveExpense()" class="w-full py-2 bg-coral rounded-2xl border-comic font-black mt-2">儲存</button>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block mb-1">金額 (NTD)</label>
+              <input type="number" id="exp-amt" min="1" placeholder="金額" class="w-full p-2 bg-washi rounded-xl border-comic font-black text-sm">
+            </div>
+            <div>
+              <label class="block mb-1">誰代墊付款？</label>
+              <select id="exp-payer" class="w-full p-2 bg-washi rounded-xl border-comic font-black text-xs">
+                ${memberOptions}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block mb-1">誰參與分攤？(可複選)</label>
+            <div class="flex flex-wrap gap-2 pt-1">
+              ${checkboxes}
+            </div>
+          </div>
+          <button type="button" onclick="saveExpense()" class="w-full py-2.5 bg-coral rounded-2xl border-comic font-black text-sm shadow-comic-sm hover:scale-102 active:scale-95 transition-transform mt-2">
+            儲存這筆支出
+          </button>
         </form>
       `);
     }
 
     function saveExpense() {
-      const title = document.getElementById('exp-title').value.trim();
-      const amount = Number(document.getElementById('exp-amt').value);
-      const payer = document.getElementById('exp-payer').value;
-      const checkedEls = document.querySelectorAll('input[name="exp-p"]:checked');
+      const titleInput = document.getElementById('exp-title');
+      const amtInput = document.getElementById('exp-amt');
+      const payerSelect = document.getElementById('exp-payer');
+
+      const title = titleInput ? titleInput.value.trim() : '';
+      const amount = amtInput ? Number(amtInput.value) : 0;
+      const payer = payerSelect ? payerSelect.value : '';
+
+      // 精準取得所有被勾選的分攤成員
+      const checkedEls = document.querySelectorAll('input[name="expense_member_check"]:checked');
       const participants = Array.from(checkedEls).map(e => e.value);
 
-      if (!title || !amount || participants.length === 0) return;
+      // 明確防呆提示
+      if (!title) {
+        showCustomAlert("請填寫品項名稱！");
+        return;
+      }
+      if (!amount || amount <= 0) {
+        showCustomAlert("請輸入大於 0 的有效金額！");
+        return;
+      }
+      if (participants.length === 0) {
+        showCustomAlert("請至少勾選一位參與分攤的成員！");
+        return;
+      }
 
+      if (!Array.isArray(appData.expenses)) {
+        appData.expenses = [];
+      }
+
+      // 新增支出紀錄
       appData.expenses.unshift({
-        id: 'exp-' + Date.now(), title, amount, payer, participants,
+        id: 'exp-' + Date.now(),
+        title: title,
+        amount: amount,
+        payer: payer,
+        participants: participants,
         date: new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })
       });
-      document.getElementById('settlement-results-card').classList.add('hidden');
+
+      // 隱藏舊的平帳卡片，促使用戶重新試算
+      const settleCard = document.getElementById('settlement-results-card');
+      if (settleCard) settleCard.classList.add('hidden');
+
+      // 儲存資料並關閉彈窗
       saveAppData();
       closeModal();
+
+      // 立即刷新畫面上的支出清單與總金額
       renderBudgetModule();
+      safeLucide();
     }
 
     function deleteExpense(id) {
