@@ -26,6 +26,7 @@
   <!-- Firebase 10.8.0 核心庫 -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
   <script>
     tailwind.config = {
@@ -103,7 +104,12 @@
       </div>
     </div>
     
-    <div class="flex items-center gap-1.5">
+  <div class="flex items-center gap-1.5">
+      <!-- Google 登入狀態按鈕 -->
+      <button id="google-auth-btn" onclick="handleGoogleAuth()" class="px-2 py-1.5 bg-white rounded-xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm active:translate-y-0.5" title="登入 Google 跨裝置同步">
+        <span class="text-coral font-black">G</span>
+        <span>登入</span>
+      </button>
       <button onclick="openShareModal()" class="px-2.5 py-1.5 bg-mizu rounded-xl border-comic text-xs font-black flex items-center gap-1 shadow-comic-sm active:translate-y-0.5">
         <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
         <span>分享</span>
@@ -316,6 +322,92 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const auth = firebase.auth();
+    const googleProvider = new firebase.auth.GoogleAuthProvider();
+    let currentUser = null;
+    let cloudUserHistory = null; // 存放 Google 帳號雲端手札庫
+    let cloudUserUnlocks = {};   // 存放 Google 帳號雲端解鎖紀錄
+
+    // 登入 / 登出切換
+    function handleGoogleAuth() {
+      if (currentUser) {
+        openModal("Google 帳號同步中", `
+          <div class="space-y-3 text-center text-xs font-bold">
+            <img src="${currentUser.photoURL || ''}" class="w-12 h-12 rounded-full border-comic mx-auto">
+            <div class="font-black text-sm text-sumi">${currentUser.displayName || '旅伴'}</div>
+            <div class="text-gray-500">${currentUser.email}</div>
+            <p class="text-[11px] text-wakatake bg-sumi px-2 py-1 rounded-lg">✓ 您的手札庫與 PIN 碼解鎖狀態已跨裝置同步</p>
+            <button onclick="logoutGoogle()" class="w-full py-2 bg-coral rounded-2xl border-comic font-black text-sm">登出帳號</button>
+          </div>
+        `);
+      } else {
+        auth.signInWithPopup(googleProvider).catch((err) => {
+          showCustomAlert("登入失敗：" + err.message);
+        });
+      }
+    }
+
+    function logoutGoogle() {
+      auth.signOut().then(() => {
+        closeModal();
+        showCustomAlert("已登出 Google 帳號，目前切換為本機模式。");
+      });
+    }
+
+    // 監聽 Google 登入狀態變化
+    auth.onAuthStateChanged((user) => {
+      currentUser = user;
+      const btn = document.getElementById('google-auth-btn');
+      if (user) {
+        btn.innerHTML = `<img src="${user.photoURL}" class="w-4 h-4 rounded-full border border-sumi"><span class="max-w-[45px] truncate">${user.displayName.split(' ')[0]}</span>`;
+        btn.classList.replace('bg-white', 'bg-wakatake/40');
+        syncUserCloudProfile(user.uid);
+      } else {
+        btn.innerHTML = `<span class="text-coral font-black">G</span><span>登入</span>`;
+        btn.classList.replace('bg-wakatake/40', 'bg-white');
+        cloudUserHistory = null;
+        cloudUserUnlocks = {};
+        checkSessionPin();
+      }
+    });
+
+    // 登入後自動合併本機與雲端的手札庫及解鎖紀錄
+    function syncUserCloudProfile(uid) {
+      const userRef = db.ref('users/' + uid);
+      userRef.on('value', (snap) => {
+        const data = snap.val() || {};
+        const localHistory = JSON.parse(localStorage.getItem('my_trip_history')) || [];
+        const remoteHistory = Array.isArray(data.history) ? data.history : [];
+
+        // 合併兩邊的手札清單（不重複）
+        const mergedMap = new Map();
+        [...remoteHistory, ...localHistory].forEach(item => {
+          if (item && item.id) mergedMap.set(item.id, item);
+        });
+        cloudUserHistory = Array.from(mergedMap.values());
+
+        // 合併解鎖紀錄
+        cloudUserUnlocks = data.unlocks || {};
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('unlocked_')) {
+            const tid = key.replace('unlocked_', '');
+            cloudUserUnlocks[tid] = localStorage.getItem(key);
+          }
+        }
+
+        // 回寫最新合併結果至該使用者的 Google 雲端空間
+        userRef.update({
+          history: cloudUserHistory,
+          unlocks: cloudUserUnlocks
+        });
+
+        checkSessionPin();
+        if (!currentTripId && cloudUserHistory.length > 0) {
+          switchTrip(cloudUserHistory[0].id);
+        }
+      });
+    }
 
     // 取得當前旅程 ID (預設為 default)
     // 取得網址參數或本機最後開啟的紀錄 (不預設強迫建立 default)
@@ -328,6 +420,9 @@
 
     // 取得本機手札庫清單 (預設為空陣列，絕不自動塞入假計畫)
     function getStoredTripList() {
+      if (currentUser && Array.isArray(cloudUserHistory)) {
+        return cloudUserHistory;
+      }
       try {
         const list = JSON.parse(localStorage.getItem('my_trip_history'));
         return Array.isArray(list) ? list : [];
@@ -337,7 +432,7 @@
     }
 
     // 只有明確建立或透過連結開啟有效計畫時，才收錄進本機手札庫
-    function recordTripToHistory(id, title) {
+   function recordTripToHistory(id, title) {
       if (!id) return;
       let list = getStoredTripList();
       const existing = list.find(x => x.id === id);
@@ -348,6 +443,11 @@
       }
       localStorage.setItem('my_trip_history', JSON.stringify(list));
       localStorage.setItem('last_active_trip', id);
+
+      if (currentUser) {
+        cloudUserHistory = list;
+        db.ref('users/' + currentUser.uid + '/history').set(list);
+      }
     }
 
     const defaultAppData = {
@@ -434,7 +534,7 @@
        2. PIN 碼安全共編機制 (無 PIN 則所有人可編；有 PIN 需解鎖)
        ============================================================ */
     function checkSessionPin() {
-      const savedPin = localStorage.getItem('unlocked_' + currentTripId);
+     const savedPin = (currentUser && cloudUserUnlocks[currentTripId]) || localStorage.getItem('unlocked_' + currentTripId);
       if (!currentPin || savedPin === currentPin) {
         isUnlocked = true;
       } else {
@@ -487,11 +587,15 @@
       window._pinCallback = onSuccessCallback;
     }
 
-    function submitVerifyPin() {
+   function submitVerifyPin() {
       const pin = document.getElementById('input-verify-pin').value.trim();
       if (pin === currentPin) {
         isUnlocked = true;
         localStorage.setItem('unlocked_' + currentTripId, pin);
+        if (currentUser) {
+          cloudUserUnlocks[currentTripId] = pin;
+          db.ref('users/' + currentUser.uid + '/unlocks/' + currentTripId).set(pin);
+        }
         updateLockBadge();
         closeModal();
         if (window._pinCallback) {
@@ -557,8 +661,7 @@ function deleteTripFromHistory(targetId, targetTitle) {
       safeLucide();
     }
 
-    function executeDeleteTrip(targetId) {
-      // 僅從「目前這台裝置」的本機歷史清單與解鎖紀錄移除，不動到 Firebase 雲端資料庫
+function executeDeleteTrip(targetId) {
       let list = getStoredTripList().filter(x => x.id !== targetId);
       localStorage.setItem('my_trip_history', JSON.stringify(list));
       localStorage.removeItem('unlocked_' + targetId);
@@ -566,8 +669,16 @@ function deleteTripFromHistory(targetId, targetTitle) {
         localStorage.removeItem('last_active_trip');
       }
 
+      if (currentUser) {
+        cloudUserHistory = list;
+        delete cloudUserUnlocks[targetId];
+        db.ref('users/' + currentUser.uid).update({
+          history: list,
+          unlocks: cloudUserUnlocks
+        });
+      }
+
       if (targetId === currentTripId) {
-        // 若移除的是目前開啟的計畫，跳轉回乾淨首頁
         window.location.href = window.location.pathname;
       } else {
         openTripManagerModal();
